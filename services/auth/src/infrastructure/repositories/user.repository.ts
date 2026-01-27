@@ -1,6 +1,6 @@
 import type { OAuthProvider } from '@fitapp/shared';
 import type { IUserRepository } from '../../domain/interfaces/user.repository.js';
-import type { UserEntity, CreateUserData } from '../../domain/entities/user.entity.js';
+import type { UserEntity, CreateUserData, CreateUserWithPasswordData } from '../../domain/entities/user.entity.js';
 import { query } from '../config/database.js';
 
 interface UserRow {
@@ -8,6 +8,7 @@ interface UserRow {
   email: string;
   name: string | null;
   avatar_url: string | null;
+  password_hash: string | null;
   provider: OAuthProvider;
   provider_id: string;
   subscription: UserEntity['subscription'];
@@ -23,6 +24,7 @@ const mapRowToEntity = (row: UserRow): UserEntity => ({
   email: row.email,
   name: row.name,
   avatarUrl: row.avatar_url,
+  passwordHash: row.password_hash,
   provider: row.provider,
   providerId: row.provider_id,
   subscription: row.subscription,
@@ -78,6 +80,18 @@ export class UserRepository implements IUserRepository {
     );
     const row = result.rows[0];
     if (!row) throw new Error('User not found');
+    return mapRowToEntity(row);
+  }
+
+  async createWithPassword(data: CreateUserWithPasswordData): Promise<UserEntity> {
+    const result = await query<UserRow>(
+      `INSERT INTO users (email, name, password_hash, provider, provider_id)
+       VALUES ($1, $2, $3, 'email', $1)
+       RETURNING *`,
+      [data.email, data.name, data.passwordHash]
+    );
+    const row = result.rows[0];
+    if (!row) throw new Error('Failed to create user');
     return mapRowToEntity(row);
   }
 }

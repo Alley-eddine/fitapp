@@ -32,3 +32,4 @@ coverage/
 .eslintcache
 .prettiercache
 *.tsbuildinfo
+.expo/

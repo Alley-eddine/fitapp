@@ -29,7 +29,7 @@ const envSchema = z.object({
   APPLE_PRIVATE_KEY: z.string().optional(),
   APPLE_CALLBACK_URL: z.string().url().optional(),
 
-  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+  FRONTEND_URL: z.string().url().default('http://localhost:8081'),
 });
 
 const parsed = envSchema.safeParse(process.env);

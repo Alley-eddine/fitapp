@@ -5,6 +5,7 @@ export interface UserEntity {
   email: string;
   name: string | null;
   avatarUrl: string | null;
+  passwordHash: string | null;
   provider: OAuthProvider;
   providerId: string;
   subscription: SubscriptionTier;
@@ -21,4 +22,10 @@ export interface CreateUserData {
   avatarUrl: string | null;
   provider: OAuthProvider;
   providerId: string;
+}
+
+export interface CreateUserWithPasswordData {
+  email: string;
+  name: string;
+  passwordHash: string;
 }

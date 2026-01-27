@@ -43,6 +43,14 @@ export class TokenService implements ITokenService {
       .sign(this.secret);
   }
 
+  async generateTokens(user: UserEntity): Promise<{ accessToken: string; refreshToken: string }> {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.generateAccessToken(user),
+      this.generateRefreshToken(user),
+    ]);
+    return { accessToken, refreshToken };
+  }
+
   async verifyAccessToken(token: string): Promise<TokenPayload> {
     const { payload } = await jose.jwtVerify(token, this.secret, {
       issuer: 'fitapp:auth',

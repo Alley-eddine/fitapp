@@ -5,10 +5,10 @@ const config: KnipConfig = {
     '.': {
       entry: ['eslint.config.js'],
     },
-    frontend: {
-      entry: ['src/main.tsx', 'src/app/**/*.tsx'],
-      project: ['src/**/*.{ts,tsx}'],
-      ignore: ['src/vite-env.d.ts'],
+    'apps/mobile': {
+      entry: ['app/**/*.tsx', 'src/**/*.ts'],
+      project: ['app/**/*.tsx', 'src/**/*.ts'],
+      ignore: ['babel.config.js', 'metro.config.js'],
     },
     'services/*': {
       entry: ['src/index.ts', 'src/**/*.ts'],
@@ -20,7 +20,17 @@ const config: KnipConfig = {
       project: ['src/**/*.ts'],
     },
   },
-  ignoreDependencies: ['@types/*', 'vitest'],
+  ignoreDependencies: [
+    'react-dom',
+    '@babel/core',
+    'expo-auth-session',
+    'expo-crypto',
+    'expo-web-browser',
+    'react-native-svg',
+    'react-native-web',
+    'expo-updates',
+    'expo-system-ui',
+  ],
   ignore: ['**/__tests__/**', '**/*.test.ts', '**/*.spec.ts'],
   ignoreExportsUsedInFile: true,
 };

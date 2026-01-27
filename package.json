@@ -6,11 +6,12 @@
   "workspaces": [
     "packages/*",
     "services/*",
-    "frontend"
+    "apps/*"
   ],
   "scripts": {
     "dev": "npm run dev --workspaces --if-present --parallel",
-    "dev:frontend": "npm run dev -w frontend",
+    "dev:mobile": "npm run start -w @fitapp/mobile",
+    "dev:web": "npm run web -w @fitapp/mobile",
     "dev:auth": "npm run dev -w services/auth",
     "dev:api": "npm run dev -w services/api",
     "dev:ai": "npm run dev -w services/ai",

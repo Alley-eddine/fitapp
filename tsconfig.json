@@ -18,10 +18,20 @@
     "noUnusedParameters": true
   },
   "references": [
-    { "path": "./packages/shared" },
-    { "path": "./services/auth" },
-    { "path": "./services/api" },
-    { "path": "./services/ai" },
-    { "path": "./frontend" }
+    {
+      "path": "./packages/shared"
+    },
+    {
+      "path": "./services/auth"
+    },
+    {
+      "path": "./services/api"
+    },
+    {
+      "path": "./services/ai"
+    },
+    {
+      "path": "./frontend"
+    }
   ]
 }

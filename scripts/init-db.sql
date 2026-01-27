@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Enum types
 CREATE TYPE subscription_tier AS ENUM ('free', 'pro', 'premium');
-CREATE TYPE oauth_provider AS ENUM ('google', 'facebook', 'apple');
+CREATE TYPE oauth_provider AS ENUM ('google', 'facebook', 'apple', 'email');
 CREATE TYPE workout_type AS ENUM ('weights', 'cardio', 'hiit', 'running', 'yoga', 'other');
 CREATE TYPE activity_level AS ENUM ('sedentary', 'light', 'moderate', 'active', 'very_active');
 CREATE TYPE fitness_goal AS ENUM ('lose_weight', 'gain_muscle', 'maintain', 'improve_endurance');
@@ -16,6 +16,7 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255),
     avatar_url VARCHAR(500),
+    password_hash VARCHAR(255),
     provider oauth_provider NOT NULL,
     provider_id VARCHAR(255) NOT NULL,
     subscription subscription_tier DEFAULT 'free',
