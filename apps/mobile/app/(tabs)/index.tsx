@@ -6,8 +6,8 @@ import { router } from 'expo-router';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useAuthStore } from '../../src/store/auth';
 import { spacing, borderRadius, fontSize } from '../../src/constants/theme';
-import { stepsApi, weightApi, workoutApi } from '../../src/lib/api';
-import type { StepsLog, WeightLog } from '../../src/lib/api';
+import { stepsApi, weightApi, workoutApi, profileApi } from '../../src/lib/api';
+import type { StepsLog, WeightLog, Profile } from '../../src/lib/api';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -15,18 +15,24 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [steps, setSteps] = useState<(StepsLog & { percentage: number }) | null>(null);
   const [weight, setWeight] = useState<WeightLog | null>(null);
+  const [weightHistory, setWeightHistory] = useState<WeightLog[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [weeklyStats, setWeeklyStats] = useState({ totalWorkouts: 0, totalDuration: 0, totalCalories: 0 });
 
   const loadData = useCallback(async () => {
     try {
-      const [stepsData, weightData, statsData] = await Promise.all([
+      const [stepsData, weightData, statsData, profileData, weightHistoryData] = await Promise.all([
         stepsApi.today().catch(() => null),
         weightApi.latest().catch(() => null),
         workoutApi.weeklyStats().catch(() => ({ totalWorkouts: 0, totalDuration: 0, totalCalories: 0 })),
+        profileApi.get().catch(() => null),
+        weightApi.list(30).catch(() => []),
       ]);
       setSteps(stepsData);
       setWeight(weightData);
       setWeeklyStats(statsData);
+      setProfile(profileData);
+      setWeightHistory(weightHistoryData);
     } catch {
       // ignore
     }
@@ -47,6 +53,21 @@ export default function HomeScreen() {
     if (hour < 12) return 'Good Morning';
     if (hour < 18) return 'Good Afternoon';
     return 'Good Evening';
+  };
+
+  const getWeightTrend = () => {
+    if (weightHistory.length < 2) {
+      return { isLoss: true, text: 'No data yet' };
+    }
+    const oldest = weightHistory[weightHistory.length - 1];
+    const newest = weightHistory[0];
+    const diff = newest.weight - oldest.weight;
+    const percentChange = ((diff / oldest.weight) * 100).toFixed(1);
+    const isLoss = diff <= 0;
+    return {
+      isLoss,
+      text: `${isLoss ? '' : '+'}${percentChange}% this month`,
+    };
   };
 
   return (
@@ -117,12 +138,12 @@ export default function HomeScreen() {
 
           <View style={[styles.statCard, styles.darkCard]}>
             <Ionicons name="flame" size={20} color="#22d3ee" />
-            <Text style={styles.kcalValue}>{weeklyStats.totalCalories || 1420}</Text>
-            <Text style={styles.kcalLabel}>KCAL LEFT</Text>
+            <Text style={styles.kcalValue}>{profile?.dailyCalorieTarget || 2000}</Text>
+            <Text style={styles.kcalLabel}>DAILY KCAL TARGET</Text>
             <View style={styles.kcalProgress}>
-              <View style={[styles.kcalBar, { width: '65%' }]} />
+              <View style={[styles.kcalBar, { width: `${String(Math.min(100, Math.round((weeklyStats.totalCalories / (profile?.dailyCalorieTarget || 2000)) * 100)))}%` }]} />
             </View>
-            <Text style={styles.kcalPercent}>65%</Text>
+            <Text style={styles.kcalPercent}>{Math.round((weeklyStats.totalCalories / (profile?.dailyCalorieTarget || 2000)) * 100)}% burned</Text>
           </View>
         </View>
 
@@ -155,7 +176,11 @@ export default function HomeScreen() {
         <View style={[styles.weightCard, { backgroundColor: colors.surface }]}>
           <View style={styles.weightHeader}>
             <View style={styles.weightLeft}>
-              <Ionicons name="trending-down" size={20} color={colors.success} />
+              <Ionicons
+                name={getWeightTrend().isLoss ? "trending-down" : "trending-up"}
+                size={20}
+                color={getWeightTrend().isLoss ? colors.success : '#f59e0b'}
+              />
               <Text style={[styles.weightTitle, { color: colors.textSecondary }]}>WEIGHT EVOLUTION</Text>
             </View>
             <Pressable>
@@ -163,7 +188,9 @@ export default function HomeScreen() {
             </Pressable>
           </View>
           <Text style={[styles.weightValue, { color: colors.text }]}>{weight?.weight || '--'} kg</Text>
-          <Text style={[styles.weightChange, { color: colors.success }]}>-2.5% this month</Text>
+          <Text style={[styles.weightChange, { color: getWeightTrend().isLoss ? colors.success : '#f59e0b' }]}>
+            {getWeightTrend().text}
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>

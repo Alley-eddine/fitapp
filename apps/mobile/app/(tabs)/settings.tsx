@@ -100,7 +100,7 @@ export default function SettingsScreen() {
         {/* Account */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ACCOUNT</Text>
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Pressable style={styles.menuItem}>
+          <Pressable style={styles.menuItem} onPress={() => { router.push('/profile/edit' as never); }}>
             <Ionicons name="person" size={22} color={colors.primary} />
             <Text style={[styles.menuText, { color: colors.text }]}>Edit Profile</Text>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />

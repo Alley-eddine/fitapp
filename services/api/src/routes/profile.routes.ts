@@ -10,6 +10,7 @@ interface ProfileRow {
   target_weight: number | null;
   height: number | null;
   birth_date: Date | null;
+  gender: string | null;
   activity_level: string;
   goal: string;
   daily_calorie_target: number | null;
@@ -60,17 +61,19 @@ export const profileRoutes = (fastify: FastifyInstance) => {
       const data = validation.data;
 
       const result = await query<ProfileRow>(
-        `INSERT INTO profiles (user_id, current_weight, target_weight, height, activity_level, goal, daily_calorie_target, allergies, diet_preferences)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO profiles (user_id, current_weight, target_weight, height, birth_date, gender, activity_level, goal, daily_calorie_target, allergies, diet_preferences)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          ON CONFLICT (user_id) DO UPDATE SET
            current_weight = COALESCE($2, profiles.current_weight),
            target_weight = COALESCE($3, profiles.target_weight),
            height = COALESCE($4, profiles.height),
-           activity_level = COALESCE($5, profiles.activity_level),
-           goal = COALESCE($6, profiles.goal),
-           daily_calorie_target = COALESCE($7, profiles.daily_calorie_target),
-           allergies = COALESCE($8, profiles.allergies),
-           diet_preferences = COALESCE($9, profiles.diet_preferences),
+           birth_date = COALESCE($5, profiles.birth_date),
+           gender = COALESCE($6, profiles.gender),
+           activity_level = COALESCE($7, profiles.activity_level),
+           goal = COALESCE($8, profiles.goal),
+           daily_calorie_target = COALESCE($9, profiles.daily_calorie_target),
+           allergies = COALESCE($10, profiles.allergies),
+           diet_preferences = COALESCE($11, profiles.diet_preferences),
            updated_at = NOW()
          RETURNING *`,
         [
@@ -78,6 +81,8 @@ export const profileRoutes = (fastify: FastifyInstance) => {
           data.currentWeight ?? null,
           data.targetWeight ?? null,
           data.height ?? null,
+          data.birthDate ?? null,
+          data.gender ?? null,
           data.activityLevel ?? 'moderate',
           data.goal ?? 'maintain',
           data.dailyCalorieTarget ?? null,
@@ -100,6 +105,7 @@ const mapProfile = (row: ProfileRow | undefined) => {
     targetWeight: row.target_weight,
     height: row.height,
     birthDate: row.birth_date,
+    gender: row.gender,
     activityLevel: row.activity_level,
     goal: row.goal,
     dailyCalorieTarget: row.daily_calorie_target,

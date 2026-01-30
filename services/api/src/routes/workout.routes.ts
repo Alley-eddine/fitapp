@@ -14,6 +14,21 @@ interface WorkoutRow {
   logged_at: Date;
 }
 
+interface ExerciseRow {
+  id: string;
+  workout_id: string;
+  name: string;
+  exercise_type: string;
+  sets: number | null;
+  reps: number | null;
+  weight_kg: number | null;
+  duration_seconds: number | null;
+  work_seconds: number | null;
+  rest_seconds: number | null;
+  rounds: number | null;
+  order_index: number;
+}
+
 export const workoutRoutes = (fastify: FastifyInstance) => {
   // Get user's workouts
   fastify.get(
@@ -35,8 +50,26 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
         [userId]
       );
 
+      // Fetch exercises for all workouts
+      const workoutIds = result.rows.map(w => w.id);
+      const exercisesByWorkout: Record<string, ExerciseRow[]> = {};
+
+      if (workoutIds.length > 0) {
+        const exercisesResult = await query<ExerciseRow>(
+          `SELECT * FROM workout_exercises WHERE workout_id = ANY($1) ORDER BY order_index`,
+          [workoutIds]
+        );
+        for (const ex of exercisesResult.rows) {
+          const workoutId = ex.workout_id;
+          if (!exercisesByWorkout[workoutId]) {
+            exercisesByWorkout[workoutId] = [];
+          }
+          exercisesByWorkout[workoutId].push(ex);
+        }
+      }
+
       return await reply.send({
-        items: result.rows.map(mapWorkout),
+        items: result.rows.map(w => mapWorkout(w, exercisesByWorkout[w.id] || [])),
         total: parseInt(countResult.rows[0]?.count ?? '0'),
       });
     }
@@ -64,7 +97,114 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
         [userId, data.type, data.durationMinutes, data.caloriesBurned ?? null, data.notes ?? null, data.aiGuided ?? false]
       );
 
-      return await reply.status(201).send(mapWorkout(result.rows[0]));
+      const workout = result.rows[0];
+
+      // Insert exercises if provided
+      const insertedExercises: ExerciseRow[] = [];
+      if (data.exercises && data.exercises.length > 0 && workout) {
+        for (let i = 0; i < data.exercises.length; i++) {
+          const exercise = data.exercises[i];
+          if (!exercise) continue;
+          const exResult = await query<ExerciseRow>(
+            `INSERT INTO workout_exercises (workout_id, name, exercise_type, sets, reps, weight_kg, duration_seconds, work_seconds, rest_seconds, rounds, order_index)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             RETURNING *`,
+            [
+              workout.id,
+              exercise.name,
+              exercise.exerciseType,
+              exercise.sets ?? null,
+              exercise.reps ?? null,
+              exercise.weightKg ?? null,
+              exercise.durationSeconds ?? null,
+              exercise.workSeconds ?? null,
+              exercise.restSeconds ?? null,
+              exercise.rounds ?? null,
+              i
+            ]
+          );
+          if (exResult.rows[0]) {
+            insertedExercises.push(exResult.rows[0]);
+          }
+        }
+      }
+
+      return await reply.status(201).send(mapWorkout(workout, insertedExercises));
+    }
+  );
+
+  // Update workout
+  fastify.put(
+    '/workouts/:id',
+    { preHandler: [authMiddleware] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = request.user?.sub;
+      const { id } = request.params as { id: string };
+      if (!userId) return reply.status(401).send({ error: 'Unauthorized' });
+
+      console.log('PUT /workouts/:id - Request body:', JSON.stringify(request.body, null, 2));
+      const validation = createWorkoutSchema.safeParse(request.body);
+      if (!validation.success) {
+        console.log('PUT /workouts/:id - Validation error:', JSON.stringify(validation.error.flatten(), null, 2));
+        return reply.status(400).send({ error: validation.error.flatten() });
+      }
+
+      // Check workout exists and belongs to user
+      const existing = await query<WorkoutRow>(
+        'SELECT * FROM workouts WHERE id = $1 AND user_id = $2',
+        [id, userId]
+      );
+      if (!existing.rows[0]) {
+        return reply.status(404).send({ error: 'Workout not found' });
+      }
+
+      const data = validation.data;
+
+      // Update workout
+      const result = await query<WorkoutRow>(
+        `UPDATE workouts
+         SET type = $1, duration_minutes = $2, calories_burned = $3, notes = $4, ai_guided = $5
+         WHERE id = $6 AND user_id = $7
+         RETURNING *`,
+        [data.type, data.durationMinutes, data.caloriesBurned ?? null, data.notes ?? null, data.aiGuided ?? false, id, userId]
+      );
+
+      const workout = result.rows[0];
+
+      // Delete existing exercises
+      await query('DELETE FROM workout_exercises WHERE workout_id = $1', [id]);
+
+      // Insert new exercises
+      const updatedExercises: ExerciseRow[] = [];
+      if (data.exercises && data.exercises.length > 0 && workout) {
+        for (let i = 0; i < data.exercises.length; i++) {
+          const exercise = data.exercises[i];
+          if (!exercise) continue;
+          const exResult = await query<ExerciseRow>(
+            `INSERT INTO workout_exercises (workout_id, name, exercise_type, sets, reps, weight_kg, duration_seconds, work_seconds, rest_seconds, rounds, order_index)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             RETURNING *`,
+            [
+              workout.id,
+              exercise.name,
+              exercise.exerciseType,
+              exercise.sets ?? null,
+              exercise.reps ?? null,
+              exercise.weightKg ?? null,
+              exercise.durationSeconds ?? null,
+              exercise.workSeconds ?? null,
+              exercise.restSeconds ?? null,
+              exercise.rounds ?? null,
+              i
+            ]
+          );
+          if (exResult.rows[0]) {
+            updatedExercises.push(exResult.rows[0]);
+          }
+        }
+      }
+
+      return await reply.send(mapWorkout(workout, updatedExercises));
     }
   );
 
@@ -86,7 +226,13 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
         return reply.status(404).send({ error: 'Workout not found' });
       }
 
-      return await reply.send(mapWorkout(result.rows[0]));
+      // Fetch exercises for this workout
+      const exercisesResult = await query<ExerciseRow>(
+        'SELECT * FROM workout_exercises WHERE workout_id = $1 ORDER BY order_index',
+        [id]
+      );
+
+      return await reply.send(mapWorkout(result.rows[0], exercisesResult.rows));
     }
   );
 
@@ -97,9 +243,11 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = request.user?.sub;
       const { id } = request.params as { id: string };
+      console.log('DELETE /workouts/:id - userId:', userId, 'workoutId:', id);
       if (!userId) return reply.status(401).send({ error: 'Unauthorized' });
 
-      await query('DELETE FROM workouts WHERE id = $1 AND user_id = $2', [id, userId]);
+      const result = await query('DELETE FROM workouts WHERE id = $1 AND user_id = $2', [id, userId]);
+      console.log('DELETE result:', result.rowCount, 'rows deleted');
 
       return await reply.status(204).send();
     }
@@ -128,7 +276,7 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
   );
 };
 
-const mapWorkout = (row: WorkoutRow | undefined) => {
+const mapWorkout = (row: WorkoutRow | undefined, exercises: ExerciseRow[] = []) => {
   if (!row) return null;
   return {
     id: row.id,
@@ -139,5 +287,17 @@ const mapWorkout = (row: WorkoutRow | undefined) => {
     notes: row.notes,
     aiGuided: row.ai_guided,
     loggedAt: row.logged_at,
+    exercises: exercises.map(ex => ({
+      id: ex.id,
+      name: ex.name,
+      exerciseType: ex.exercise_type,
+      sets: ex.sets,
+      reps: ex.reps,
+      weightKg: ex.weight_kg,
+      durationSeconds: ex.duration_seconds,
+      workSeconds: ex.work_seconds,
+      restSeconds: ex.rest_seconds,
+      rounds: ex.rounds,
+    })),
   };
 };

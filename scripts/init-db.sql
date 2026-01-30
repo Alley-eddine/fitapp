@@ -9,6 +9,7 @@ CREATE TYPE oauth_provider AS ENUM ('google', 'facebook', 'apple', 'email');
 CREATE TYPE workout_type AS ENUM ('weights', 'cardio', 'hiit', 'running', 'yoga', 'other');
 CREATE TYPE activity_level AS ENUM ('sedentary', 'light', 'moderate', 'active', 'very_active');
 CREATE TYPE fitness_goal AS ENUM ('lose_weight', 'gain_muscle', 'maintain', 'improve_endurance');
+CREATE TYPE gender AS ENUM ('male', 'female');
 
 -- Users
 CREATE TABLE users (
@@ -36,6 +37,7 @@ CREATE TABLE profiles (
     target_weight DECIMAL(5,2),
     height INTEGER, -- in cm
     birth_date DATE,
+    gender gender,
     activity_level activity_level DEFAULT 'moderate',
     goal fitness_goal DEFAULT 'maintain',
     daily_calorie_target INTEGER,

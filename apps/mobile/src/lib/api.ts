@@ -1,6 +1,6 @@
 import { useAuthStore } from '../store/auth';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3002';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -17,10 +17,12 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+  private getHeaders(hasBody: boolean): Record<string, string> {
+    const headers: Record<string, string> = {};
+    // Only set Content-Type when there's a body (Fastify rejects empty body with JSON content-type)
+    if (hasBody) {
+      headers['Content-Type'] = 'application/json';
+    }
     const token = useAuthStore.getState().token;
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -33,13 +35,18 @@ class ApiClient {
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method,
-      headers: { ...this.getHeaders(), ...headers },
+      headers: { ...this.getHeaders(!!body), ...headers },
       body: body ? JSON.stringify(body) : undefined,
     });
 
     if (!response.ok) {
       const errorData = (await response.json().catch(() => ({ error: 'Request failed' }))) as { error?: string };
       throw new Error(errorData.error ?? 'Request failed');
+    }
+
+    // Handle 204 No Content responses (e.g., DELETE)
+    if (response.status === 204) {
+      return undefined as T;
     }
 
     return response.json() as Promise<T>;
@@ -67,31 +74,80 @@ export const api = new ApiClient(API_URL);
 export interface Profile {
   id: string;
   userId: string;
-  name: string;
-  email: string;
-  goalWeight?: number;
+  currentWeight: number | null;
+  targetWeight: number | null;
+  height: number | null;
+  birthDate: string | null;
+  gender: 'male' | 'female' | null;
+  activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  goal: 'lose_weight' | 'gain_muscle' | 'maintain' | 'improve_endurance';
+  dailyCalorieTarget: number | null;
+  allergies: string[];
+  dietPreferences: string[];
+}
+
+export interface ProfileUpdate {
   currentWeight?: number;
+  targetWeight?: number;
   height?: number;
-  activityLevel?: string;
-  subscriptionTier: string;
+  birthDate?: string;
+  gender?: 'male' | 'female';
+  activityLevel?: Profile['activityLevel'];
+  goal?: Profile['goal'];
+  dailyCalorieTarget?: number;
+  allergies?: string[];
+  dietPreferences?: string[];
 }
 
 export interface Workout {
   id: string;
+  userId: string;
   type: string;
-  duration: number;
-  caloriesBurned?: number;
-  notes?: string;
-  exercises: Exercise[];
-  createdAt: string;
+  durationMinutes: number;
+  caloriesBurned: number | null;
+  notes: string | null;
+  aiGuided: boolean;
+  loggedAt: string;
+  exercises?: Exercise[];
 }
 
+export type ExerciseType = 'muscu' | 'cardio' | 'hiit';
+
 export interface Exercise {
+  id?: string;
   name: string;
+  exerciseType?: ExerciseType;
+  // Muscu fields
   sets?: number;
   reps?: number;
-  weight?: number;
-  duration?: number;
+  weightKg?: number;
+  // Cardio field
+  durationSeconds?: number;
+  // HIIT fields
+  workSeconds?: number;
+  restSeconds?: number;
+  rounds?: number;
+}
+
+export interface ExerciseInput {
+  name: string;
+  exerciseType?: ExerciseType;
+  sets?: number;
+  reps?: number;
+  weightKg?: number;
+  durationSeconds?: number;
+  workSeconds?: number;
+  restSeconds?: number;
+  rounds?: number;
+}
+
+export interface CreateWorkoutInput {
+  type: string;
+  durationMinutes: number;
+  caloriesBurned?: number;
+  notes?: string;
+  aiGuided?: boolean;
+  exercises?: ExerciseInput[];
 }
 
 export interface WeightLog {
@@ -109,15 +165,16 @@ export interface StepsLog {
 
 export const profileApi = {
   get: () => api.get<Profile>('/api/profile'),
-  update: (data: Partial<Profile>) => api.put<Profile>('/api/profile', data),
+  update: (data: ProfileUpdate) => api.put<Profile>('/api/profile', data),
 };
 
 export const workoutApi = {
-  list: (days = 7) => api.get<Workout[]>(`/api/workouts?days=${String(days)}`),
-  create: (data: Omit<Workout, 'id' | 'createdAt'>) => api.post<Workout>('/api/workouts', data),
+  list: (limit = 10, offset = 0) => api.get<{ items: Workout[]; total: number }>(`/api/workouts?limit=${String(limit)}&offset=${String(offset)}`),
+  create: (data: CreateWorkoutInput) => api.post<Workout>('/api/workouts', data),
+  update: (id: string, data: CreateWorkoutInput) => api.put<Workout>(`/api/workouts/${id}`, data),
   get: (id: string) => api.get<Workout>(`/api/workouts/${id}`),
   delete: (id: string) => api.delete(`/api/workouts/${id}`),
-  weeklyStats: () => api.get<{ totalWorkouts: number; totalDuration: number; totalCalories: number }>('/api/workouts/stats/weekly'),
+  weeklyStats: () => api.get<{ workoutsThisWeek: number; totalMinutes: number }>('/api/workouts/stats/weekly'),
 };
 
 export const weightApi = {

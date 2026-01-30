@@ -10,6 +10,7 @@ export const colors = {
     textSecondary: '#64748b',
     success: '#22c55e',
     error: '#ef4444',
+    warning: '#f59e0b',
     border: '#e2e8f0',
   },
   dark: {
@@ -23,6 +24,7 @@ export const colors = {
     textSecondary: '#94a3b8',
     success: '#84cc16',
     error: '#f87171',
+    warning: '#fbbf24',
     border: '#334155',
   },
 };
