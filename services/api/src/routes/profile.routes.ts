@@ -16,6 +16,7 @@ interface ProfileRow {
   daily_calorie_target: number | null;
   allergies: string[] | null;
   diet_preferences: string[] | null;
+  onboarding_completed: boolean;
 }
 
 export const profileRoutes = (fastify: FastifyInstance) => {
@@ -61,8 +62,8 @@ export const profileRoutes = (fastify: FastifyInstance) => {
       const data = validation.data;
 
       const result = await query<ProfileRow>(
-        `INSERT INTO profiles (user_id, current_weight, target_weight, height, birth_date, gender, activity_level, goal, daily_calorie_target, allergies, diet_preferences)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `INSERT INTO profiles (user_id, current_weight, target_weight, height, birth_date, gender, activity_level, goal, daily_calorie_target, allergies, diet_preferences, onboarding_completed)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (user_id) DO UPDATE SET
            current_weight = COALESCE($2, profiles.current_weight),
            target_weight = COALESCE($3, profiles.target_weight),
@@ -74,6 +75,7 @@ export const profileRoutes = (fastify: FastifyInstance) => {
            daily_calorie_target = COALESCE($9, profiles.daily_calorie_target),
            allergies = COALESCE($10, profiles.allergies),
            diet_preferences = COALESCE($11, profiles.diet_preferences),
+           onboarding_completed = COALESCE($12, profiles.onboarding_completed),
            updated_at = NOW()
          RETURNING *`,
         [
@@ -88,6 +90,7 @@ export const profileRoutes = (fastify: FastifyInstance) => {
           data.dailyCalorieTarget ?? null,
           data.allergies ?? null,
           data.dietPreferences ?? null,
+          data.onboardingCompleted ?? null,
         ]
       );
 
@@ -111,5 +114,6 @@ const mapProfile = (row: ProfileRow | undefined) => {
     dailyCalorieTarget: row.daily_calorie_target,
     allergies: row.allergies ?? [],
     dietPreferences: row.diet_preferences ?? [],
+    onboardingCompleted: row.onboarding_completed,
   };
 };

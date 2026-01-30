@@ -44,7 +44,8 @@ export default function AuthCallback() {
             params.accessToken
           );
 
-          router.replace('/(tabs)');
+          // Redirect to index which will check onboarding status
+          router.replace('/');
         } catch {
           router.replace('/(auth)/login');
         }

@@ -381,47 +381,46 @@ export default function NewWorkoutScreen() {
               />
 
               {/* Conditional fields based on type */}
+              {/* MUSCU: sets, reps, weight - responsive grid */}
+              {exercise.exerciseType === 'muscu' && (
+                <View style={styles.muscuDetails}>
+                  <View style={[styles.muscuItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Text style={[styles.muscuLabel, { color: colors.textSecondary }]}>Sets</Text>
+                    <TextInput
+                      style={[styles.muscuInput, { color: colors.text }]}
+                      value={String(exercise.sets || '')}
+                      onChangeText={(v: string) => { updateExercise(index, 'sets', parseInt(v) || 0); }}
+                      keyboardType="number-pad"
+                      placeholder="0"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+                  <View style={[styles.muscuItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Text style={[styles.muscuLabel, { color: colors.textSecondary }]}>Reps</Text>
+                    <TextInput
+                      style={[styles.muscuInput, { color: colors.text }]}
+                      value={String(exercise.reps || '')}
+                      onChangeText={(v: string) => { updateExercise(index, 'reps', parseInt(v) || 0); }}
+                      keyboardType="number-pad"
+                      placeholder="0"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+                  <View style={[styles.muscuItem, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Text style={[styles.muscuLabel, { color: colors.primary }]}>Weight (kg)</Text>
+                    <TextInput
+                      style={[styles.muscuInput, { color: colors.primary }]}
+                      value={String(exercise.weightKg || '')}
+                      onChangeText={(v: string) => { updateExercise(index, 'weightKg', parseInt(v) || 0); }}
+                      keyboardType="number-pad"
+                      placeholder="0"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+                </View>
+              )}
+
               <View style={styles.exerciseDetails}>
-                {/* MUSCU: sets, reps, weight */}
-                {exercise.exerciseType === 'muscu' && (
-                  <>
-                    <View style={styles.detailItem}>
-                      <Ionicons name="layers" size={14} color={colors.textSecondary} />
-                      <TextInput
-                        style={[styles.detailInput, { color: colors.text }]}
-                        value={String(exercise.sets || '')}
-                        onChangeText={(v: string) => { updateExercise(index, 'sets', parseInt(v) || 0); }}
-                        keyboardType="number-pad"
-                        placeholder="0"
-                      />
-                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>sets</Text>
-                    </View>
-                    <Text style={[styles.detailDot, { color: colors.textSecondary }]}>•</Text>
-                    <View style={styles.detailItem}>
-                      <Ionicons name="repeat" size={14} color={colors.textSecondary} />
-                      <TextInput
-                        style={[styles.detailInput, { color: colors.text }]}
-                        value={String(exercise.reps || '')}
-                        onChangeText={(v: string) => { updateExercise(index, 'reps', parseInt(v) || 0); }}
-                        keyboardType="number-pad"
-                        placeholder="0"
-                      />
-                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>reps</Text>
-                    </View>
-                    <Text style={[styles.detailDot, { color: colors.textSecondary }]}>•</Text>
-                    <View style={styles.detailItem}>
-                      <Ionicons name="barbell" size={14} color={colors.primary} />
-                      <TextInput
-                        style={[styles.detailInput, { color: colors.primary }]}
-                        value={String(exercise.weightKg || '')}
-                        onChangeText={(v: string) => { updateExercise(index, 'weightKg', parseInt(v) || 0); }}
-                        keyboardType="number-pad"
-                        placeholder="0"
-                      />
-                      <Text style={[styles.detailLabel, { color: colors.primary }]}>kg</Text>
-                    </View>
-                  </>
-                )}
 
                 {/* CARDIO: duration */}
                 {exercise.exerciseType === 'cardio' && (
@@ -703,4 +702,31 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   startLiveText: { fontSize: fontSize.md, fontWeight: '500' },
+  muscuDetails: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  muscuItem: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  muscuLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  muscuInput: {
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    textAlign: 'center',
+    paddingVertical: 2,
+    minWidth: 30,
+    // @ts-expect-error - web-only style
+    outlineStyle: 'none',
+  },
 });

@@ -87,16 +87,38 @@ export default function ActiveWorkoutScreen() {
   const handleFinish = async () => {
     setSaving(true);
     try {
-      // Clean exercise data - same logic as new.tsx
+      // Clean exercise data based on exercise type
       const cleanedExercises = exercises.map(ex => {
-        const completedSets = ex.sets.filter(s => s.completed).length;
-        const cleaned: { name: string; sets?: number; reps?: number; weightKg?: number } = {
-          name: ex.name,
-        };
-        if (completedSets > 0) cleaned.sets = completedSets;
-        if (ex.targetReps > 0) cleaned.reps = ex.targetReps;
-        const firstSet = ex.sets[0];
-        if (firstSet.weightKg > 0) cleaned.weightKg = firstSet.weightKg;
+        const cleaned: {
+          name: string;
+          sets?: number;
+          reps?: number;
+          weightKg?: number;
+          durationSeconds?: number;
+          rounds?: number;
+        } = { name: ex.name };
+
+        if (ex.exerciseType === 'cardio') {
+          // Cardio: save elapsed duration
+          if (ex.cardioElapsedSeconds && ex.cardioElapsedSeconds > 0) {
+            cleaned.durationSeconds = ex.cardioElapsedSeconds;
+          }
+        } else if (ex.exerciseType === 'hiit') {
+          // HIIT: save completed rounds
+          if (ex.currentRound && ex.currentRound > 0) {
+            cleaned.rounds = ex.hiitCompleted ? ex.totalRounds : ex.currentRound - 1;
+          }
+        } else {
+          // Muscu: save sets, reps, weight
+          const completedSets = ex.sets.filter(s => s.completed).length;
+          if (completedSets > 0) cleaned.sets = completedSets;
+          if (ex.targetReps > 0) cleaned.reps = ex.targetReps;
+          const firstSet = ex.sets[0] as { weightKg: number } | undefined;
+          if (firstSet && firstSet.weightKg > 0) {
+            cleaned.weightKg = firstSet.weightKg;
+          }
+        }
+
         return cleaned;
       });
 
@@ -212,42 +234,170 @@ export default function ActiveWorkoutScreen() {
               exIndex === currentExerciseIndex && { borderColor: colors.primary, borderWidth: 2 },
             ]}
           >
-            <View style={styles.exerciseHeader}>
-              <Text style={[styles.exerciseName, { color: colors.text }]}>
-                {exercise.name}
-              </Text>
-              <Text style={[styles.exerciseTarget, { color: colors.textSecondary }]}>
-                {exercise.targetSets} x {exercise.targetReps}
-              </Text>
-            </View>
+            {/* Cardio Exercise */}
+            {exercise.exerciseType === 'cardio' && (
+              <>
+                <View style={styles.exerciseHeader}>
+                  <View style={styles.exerciseHeaderLeft}>
+                    <Ionicons name="heart" size={20} color={colors.error} />
+                    <Text style={[styles.exerciseName, { color: colors.text }]}>
+                      {exercise.name}
+                    </Text>
+                  </View>
+                  <Text style={[styles.exerciseTarget, { color: colors.textSecondary }]}>
+                    {Math.floor((exercise.targetDurationSeconds || 0) / 60)} min
+                  </Text>
+                </View>
 
-            <View style={styles.setsContainer}>
-              {exercise.sets.map((set, setIndex) => (
-                <Pressable
-                  key={setIndex}
-                  style={[
-                    styles.setButton,
-                    { borderColor: colors.border },
-                    set.completed && { backgroundColor: colors.success, borderColor: colors.success },
-                  ]}
-                  onPress={() => { if (!set.completed) handleCompleteSet(exIndex, setIndex); }}
-                  disabled={set.completed}
-                >
-                  {set.completed ? (
-                    <Ionicons name="checkmark" size={20} color="#fff" />
-                  ) : (
+                <View style={styles.cardioContainer}>
+                  <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          backgroundColor: exercise.cardioCompleted ? colors.success : colors.error,
+                          width: `${String(Math.min(100, ((exercise.cardioElapsedSeconds ?? 0) / (exercise.targetDurationSeconds ?? 1)) * 100))}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <View style={styles.cardioStats}>
+                    <Text style={[styles.cardioTime, { color: colors.text }]}>
+                      {formatTime(exercise.cardioElapsedSeconds || 0)}
+                    </Text>
+                    <Text style={[styles.cardioTotal, { color: colors.textSecondary }]}>
+                      / {formatTime(exercise.targetDurationSeconds || 0)}
+                    </Text>
+                  </View>
+                  {exercise.cardioCompleted && (
+                    <View style={[styles.completedBadge, { backgroundColor: colors.success }]}>
+                      <Ionicons name="checkmark" size={16} color="#fff" />
+                      <Text style={styles.completedText}>Completed</Text>
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
+
+            {/* HIIT Exercise */}
+            {exercise.exerciseType === 'hiit' && (
+              <>
+                <View style={styles.exerciseHeader}>
+                  <View style={styles.exerciseHeaderLeft}>
+                    <Ionicons name="flash" size={20} color={colors.warning} />
+                    <Text style={[styles.exerciseName, { color: colors.text }]}>
+                      {exercise.name}
+                    </Text>
+                  </View>
+                  <Text style={[styles.exerciseTarget, { color: colors.textSecondary }]}>
+                    {exercise.totalRounds} rounds
+                  </Text>
+                </View>
+
+                <View style={styles.hiitContainer}>
+                  {!exercise.hiitCompleted ? (
                     <>
-                      <Text style={[styles.setNumber, { color: colors.text }]}>
-                        {setIndex + 1}
-                      </Text>
-                      <Text style={[styles.setInfo, { color: colors.textSecondary }]}>
-                        {set.weightKg}kg
+                      <View
+                        style={[
+                          styles.hiitPhaseCard,
+                          {
+                            backgroundColor: exercise.isWorkPhase
+                              ? colors.error + '20'
+                              : colors.success + '20',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.hiitPhaseLabel,
+                            { color: exercise.isWorkPhase ? colors.error : colors.success },
+                          ]}
+                        >
+                          {exercise.isWorkPhase ? 'WORK' : 'REST'}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.hiitPhaseTime,
+                            { color: exercise.isWorkPhase ? colors.error : colors.success },
+                          ]}
+                        >
+                          {exercise.hiitPhaseSeconds}s
+                        </Text>
+                      </View>
+
+                      <View style={styles.hiitRoundsContainer}>
+                        {Array.from({ length: exercise.totalRounds || 8 }).map((_, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.hiitRoundDot,
+                              {
+                                backgroundColor:
+                                  i < (exercise.currentRound || 1) - 1
+                                    ? colors.success
+                                    : i === (exercise.currentRound || 1) - 1
+                                    ? colors.warning
+                                    : colors.border,
+                              },
+                            ]}
+                          />
+                        ))}
+                      </View>
+                      <Text style={[styles.hiitRoundText, { color: colors.textSecondary }]}>
+                        Round {exercise.currentRound}/{exercise.totalRounds}
                       </Text>
                     </>
+                  ) : (
+                    <View style={[styles.completedBadge, { backgroundColor: colors.success }]}>
+                      <Ionicons name="checkmark" size={16} color="#fff" />
+                      <Text style={styles.completedText}>All rounds completed!</Text>
+                    </View>
                   )}
-                </Pressable>
-              ))}
-            </View>
+                </View>
+              </>
+            )}
+
+            {/* Muscu Exercise (default) */}
+            {exercise.exerciseType === 'muscu' && (
+              <>
+                <View style={styles.exerciseHeader}>
+                  <Text style={[styles.exerciseName, { color: colors.text }]}>
+                    {exercise.name}
+                  </Text>
+                  <Text style={[styles.exerciseTarget, { color: colors.textSecondary }]}>
+                    {exercise.targetSets} x {exercise.targetReps}
+                  </Text>
+                </View>
+
+                <View style={styles.setsContainer}>
+                  {exercise.sets.map((set, setIndex) => (
+                    <Pressable
+                      key={setIndex}
+                      style={[
+                        styles.setButton,
+                        { borderColor: colors.border },
+                        set.completed && { backgroundColor: colors.success, borderColor: colors.success },
+                      ]}
+                      onPress={() => { if (!set.completed) handleCompleteSet(exIndex, setIndex); }}
+                      disabled={set.completed}
+                    >
+                      {set.completed ? (
+                        <Ionicons name="checkmark" size={20} color="#fff" />
+                      ) : (
+                        <>
+                          <Text style={[styles.setNumber, { color: colors.text }]}>
+                            {setIndex + 1}
+                          </Text>
+                          <Text style={[styles.setInfo, { color: colors.textSecondary }]}>
+                            {set.weightKg}kg
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         ))}
 
@@ -550,5 +700,90 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     alignItems: 'center',
     marginTop: spacing.sm,
+  },
+  // Cardio styles
+  exerciseHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  cardioContainer: {
+    gap: spacing.md,
+  },
+  progressBarBg: {
+    height: 12,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+  cardioStats: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  cardioTime: {
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  cardioTotal: {
+    fontSize: fontSize.md,
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    alignSelf: 'center',
+  },
+  completedText: {
+    color: '#fff',
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+  // HIIT styles
+  hiitContainer: {
+    gap: spacing.md,
+    alignItems: 'center',
+  },
+  hiitPhaseCard: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    width: '100%',
+  },
+  hiitPhaseLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginBottom: spacing.xs,
+  },
+  hiitPhaseTime: {
+    fontSize: 48,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  hiitRoundsContainer: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  hiitRoundDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  hiitRoundText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
   },
 });

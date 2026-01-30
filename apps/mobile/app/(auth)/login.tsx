@@ -7,6 +7,7 @@ import { useThemeStore } from '../../src/store/theme';
 import { colors, spacing, borderRadius, fontSize } from '../../src/constants/theme';
 import { router } from 'expo-router';
 import type { SubscriptionTier } from '@fitapp/shared';
+import { profileApi } from '../../src/lib/api';
 
 const AUTH_URL = process.env.EXPO_PUBLIC_AUTH_URL || 'http://localhost:3001';
 
@@ -85,7 +86,22 @@ export default function LoginScreen() {
         data.accessToken
       );
 
-      router.replace('/(tabs)');
+      // After registration, go to profile setup
+      // After login, check if onboarding is completed
+      if (mode === 'register') {
+        router.replace('/(onboarding)/profile-setup' as never);
+      } else {
+        try {
+          const profile = await profileApi.get();
+          if (profile.onboardingCompleted) {
+            router.replace('/(tabs)' as never);
+          } else {
+            router.replace('/(onboarding)/profile-setup' as never);
+          }
+        } catch {
+          router.replace('/(onboarding)/profile-setup' as never);
+        }
+      }
     } catch {
       setError('Erreur de connexion au serveur');
     } finally {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Exercise } from '../lib/api';
+import type { Exercise, ExerciseType } from '../lib/api';
 
 export interface ActiveSet {
   setIndex: number;
@@ -10,9 +10,23 @@ export interface ActiveSet {
 
 export interface ActiveExercise {
   name: string;
+  exerciseType: ExerciseType;
+  // Muscu
   targetSets: number;
   targetReps: number;
   sets: ActiveSet[];
+  // Cardio
+  targetDurationSeconds?: number;
+  cardioElapsedSeconds?: number;
+  cardioCompleted?: boolean;
+  // HIIT
+  workSeconds?: number;
+  restSeconds?: number;
+  totalRounds?: number;
+  currentRound?: number;
+  isWorkPhase?: boolean;
+  hiitPhaseSeconds?: number;
+  hiitCompleted?: boolean;
 }
 
 export interface EditWorkoutData {
@@ -83,17 +97,53 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
   setEditWorkout: (workout) => { set({ editWorkout: workout }); },
 
   startWorkout: (type, exercises, restBetweenSets, restBetweenExercises) => {
-    const activeExercises: ActiveExercise[] = exercises.map(ex => ({
-      name: ex.name,
-      targetSets: ex.sets || 3,
-      targetReps: ex.reps || 10,
-      sets: Array.from({ length: ex.sets || 3 }, (_, i) => ({
-        setIndex: i,
-        reps: ex.reps || 10,
-        weightKg: ex.weightKg || 0,
-        completed: false,
-      })),
-    }));
+    const activeExercises: ActiveExercise[] = exercises.map(ex => {
+      const exerciseType = ex.exerciseType || 'muscu';
+
+      if (exerciseType === 'cardio') {
+        return {
+          name: ex.name,
+          exerciseType,
+          targetSets: 1,
+          targetReps: 0,
+          sets: [],
+          targetDurationSeconds: ex.durationSeconds || 1800,
+          cardioElapsedSeconds: 0,
+          cardioCompleted: false,
+        };
+      }
+
+      if (exerciseType === 'hiit') {
+        return {
+          name: ex.name,
+          exerciseType,
+          targetSets: ex.rounds || 8,
+          targetReps: 0,
+          sets: [],
+          workSeconds: ex.workSeconds || 30,
+          restSeconds: ex.restSeconds || 30,
+          totalRounds: ex.rounds || 8,
+          currentRound: 1,
+          isWorkPhase: true,
+          hiitPhaseSeconds: ex.workSeconds || 30,
+          hiitCompleted: false,
+        };
+      }
+
+      // Muscu (default)
+      return {
+        name: ex.name,
+        exerciseType,
+        targetSets: ex.sets || 3,
+        targetReps: ex.reps || 10,
+        sets: Array.from({ length: ex.sets || 3 }, (_, i) => ({
+          setIndex: i,
+          reps: ex.reps || 10,
+          weightKg: ex.weightKg || 0,
+          completed: false,
+        })),
+      };
+    });
 
     set({
       isActive: true,
@@ -155,9 +205,75 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
   },
 
   tick: () => {
-    const { isPaused, isResting } = get();
-    if (!isPaused && !isResting) {
-      set(state => ({ elapsedSeconds: state.elapsedSeconds + 1 }));
+    const { isPaused, isResting, exercises, currentExerciseIndex, restBetweenExercises } = get();
+    if (isPaused || isResting) return;
+
+    set(state => ({ elapsedSeconds: state.elapsedSeconds + 1 }));
+
+    const currentEx = exercises[currentExerciseIndex] as ActiveExercise | undefined;
+    if (!currentEx) return;
+
+    // Handle cardio timer
+    if (currentEx.exerciseType === 'cardio' && !currentEx.cardioCompleted) {
+      const newElapsed = (currentEx.cardioElapsedSeconds ?? 0) + 1;
+      const isNowComplete = newElapsed >= (currentEx.targetDurationSeconds ?? 0);
+
+      set(state => {
+        const updatedExercises = [...state.exercises];
+        const ex = updatedExercises[currentExerciseIndex] as ActiveExercise | undefined;
+        if (ex && ex.exerciseType === 'cardio') {
+          ex.cardioElapsedSeconds = newElapsed;
+          if (isNowComplete) {
+            ex.cardioCompleted = true;
+          }
+        }
+        return { exercises: updatedExercises };
+      });
+
+      // If just completed, start rest for next exercise
+      if (isNowComplete && currentExerciseIndex < exercises.length - 1) {
+        set({ isResting: true, restSeconds: restBetweenExercises });
+      }
+      return;
+    }
+
+    // Handle HIIT timer
+    if (currentEx.exerciseType === 'hiit' && !currentEx.hiitCompleted) {
+      const newPhaseSeconds = (currentEx.hiitPhaseSeconds ?? 1) - 1;
+
+      set(state => {
+        const updatedExercises = [...state.exercises];
+        const ex = updatedExercises[currentExerciseIndex] as ActiveExercise | undefined;
+        if (ex && ex.exerciseType === 'hiit') {
+          ex.hiitPhaseSeconds = newPhaseSeconds;
+
+          if (newPhaseSeconds <= 0) {
+            if (ex.isWorkPhase) {
+              // Switch to rest phase
+              ex.isWorkPhase = false;
+              ex.hiitPhaseSeconds = ex.restSeconds ?? 30;
+            } else {
+              // End of rest, go to next round
+              const nextRound = (ex.currentRound ?? 1) + 1;
+              if (nextRound > (ex.totalRounds ?? 8)) {
+                ex.hiitCompleted = true;
+              } else {
+                ex.currentRound = nextRound;
+                ex.isWorkPhase = true;
+                ex.hiitPhaseSeconds = ex.workSeconds ?? 30;
+              }
+            }
+          }
+        }
+        return { exercises: updatedExercises };
+      });
+
+      // Check if HIIT just completed after state update
+      const updatedState = get();
+      const updatedEx = updatedState.exercises[currentExerciseIndex] as ActiveExercise | undefined;
+      if (updatedEx?.hiitCompleted && currentExerciseIndex < exercises.length - 1) {
+        set({ isResting: true, restSeconds: restBetweenExercises });
+      }
     }
   },
 
@@ -186,12 +302,56 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     set({ isResting: true, restSeconds: duration });
   },
 
-  skipRest: () => { set({ isResting: false, restSeconds: 0 }); },
+  skipRest: () => {
+    const { exercises, currentExerciseIndex } = get();
+    const currentEx = exercises[currentExerciseIndex] as ActiveExercise | undefined;
+
+    if (!currentEx) {
+      set({ isResting: false, restSeconds: 0 });
+      return;
+    }
+
+    // Check if current exercise is completed and we should advance
+    const isComplete =
+      (currentEx.exerciseType === 'cardio' && currentEx.cardioCompleted === true) ||
+      (currentEx.exerciseType === 'hiit' && currentEx.hiitCompleted === true) ||
+      (currentEx.exerciseType === 'muscu' && currentEx.sets.every(s => s.completed));
+
+    if (isComplete && currentExerciseIndex < exercises.length - 1) {
+      set({
+        isResting: false,
+        restSeconds: 0,
+        currentExerciseIndex: currentExerciseIndex + 1
+      });
+    } else {
+      set({ isResting: false, restSeconds: 0 });
+    }
+  },
 
   restTick: () => {
-    const { restSeconds } = get();
+    const { restSeconds, exercises, currentExerciseIndex } = get();
     if (restSeconds > 0) {
       set({ restSeconds: restSeconds - 1 });
+      return;
+    }
+
+    // Rest ended, check if we should advance to next exercise
+    const currentEx = exercises[currentExerciseIndex] as ActiveExercise | undefined;
+    if (!currentEx) {
+      set({ isResting: false });
+      return;
+    }
+
+    const isComplete =
+      (currentEx.exerciseType === 'cardio' && currentEx.cardioCompleted === true) ||
+      (currentEx.exerciseType === 'hiit' && currentEx.hiitCompleted === true) ||
+      (currentEx.exerciseType === 'muscu' && currentEx.sets.every(s => s.completed));
+
+    if (isComplete && currentExerciseIndex < exercises.length - 1) {
+      set({
+        isResting: false,
+        currentExerciseIndex: currentExerciseIndex + 1
+      });
     } else {
       set({ isResting: false });
     }

@@ -84,6 +84,7 @@ export interface Profile {
   dailyCalorieTarget: number | null;
   allergies: string[];
   dietPreferences: string[];
+  onboardingCompleted: boolean;
 }
 
 export interface ProfileUpdate {
@@ -97,6 +98,7 @@ export interface ProfileUpdate {
   dailyCalorieTarget?: number;
   allergies?: string[];
   dietPreferences?: string[];
+  onboardingCompleted?: boolean;
 }
 
 export interface Workout {

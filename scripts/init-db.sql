@@ -43,6 +43,7 @@ CREATE TABLE profiles (
     daily_calorie_target INTEGER,
     allergies TEXT[],
     diet_preferences TEXT[],
+    onboarding_completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );

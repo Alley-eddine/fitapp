@@ -17,6 +17,7 @@ export const createProfileSchema = z.object({
   dailyCalorieTarget: z.number().int().positive().max(10000).optional(),
   allergies: z.array(z.string().max(100)).max(20).optional(),
   dietPreferences: z.array(z.string().max(100)).max(20).optional(),
+  onboardingCompleted: z.boolean().optional(),
 });
 
 export const updateProfileSchema = createProfileSchema.partial();
