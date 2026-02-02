@@ -17,6 +17,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
+  "exclude": ["apps/**", "node_modules"],
   "references": [
     {
       "path": "./packages/shared"
@@ -29,9 +30,6 @@
     },
     {
       "path": "./services/ai"
-    },
-    {
-      "path": "./frontend"
     }
   ]
 }

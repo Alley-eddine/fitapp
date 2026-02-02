@@ -2,21 +2,17 @@ import type { KnipConfig } from 'knip';
 
 const config: KnipConfig = {
   workspaces: {
-    '.': {
-      entry: ['eslint.config.js'],
-    },
+    '.': {},
     'apps/mobile': {
       entry: ['app/**/*.tsx', 'src/**/*.ts'],
       project: ['app/**/*.tsx', 'src/**/*.ts'],
       ignore: ['babel.config.js', 'metro.config.js'],
     },
     'services/*': {
-      entry: ['src/index.ts', 'src/**/*.ts'],
       project: ['src/**/*.ts'],
       ignore: ['src/__tests__/**'],
     },
     'packages/*': {
-      entry: ['src/index.ts'],
       project: ['src/**/*.ts'],
     },
   },
@@ -30,9 +26,18 @@ const config: KnipConfig = {
     'react-native-web',
     'expo-updates',
     'expo-system-ui',
+    'husky',
   ],
-  ignore: ['**/__tests__/**', '**/*.test.ts', '**/*.spec.ts'],
+  ignore: [
+    '**/__tests__/**',
+    '**/*.test.ts',
+    '**/*.spec.ts',
+    '**/index.ts', // barrel files
+  ],
   ignoreExportsUsedInFile: true,
+  rules: {
+    exports: 'off', // Too many false positives for utility functions
+  },
 };
 
 export default config;

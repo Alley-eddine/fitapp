@@ -7,6 +7,8 @@ import { weightRoutes } from './routes/weight.routes.js';
 import { stepsRoutes } from './routes/steps.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { userRoutes } from './routes/user.routes.js';
+import { recipeRoutes } from './routes/recipe.routes.js';
+import { nutritionRoutes } from './routes/nutrition.routes.js';
 import { env } from './config/env.js';
 
 collectDefaultMetrics();
@@ -29,6 +31,8 @@ export const createServer = async () => {
   await fastify.register(workoutRoutes, { prefix: '/api' });
   await fastify.register(weightRoutes, { prefix: '/api' });
   await fastify.register(stepsRoutes, { prefix: '/api' });
+  await fastify.register(recipeRoutes, { prefix: '/api' });
+  await fastify.register(nutritionRoutes, { prefix: '/api' });
 
   // Prometheus metrics endpoint
   fastify.get('/metrics', async (_request, reply) => {

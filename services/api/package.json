@@ -10,7 +10,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@fitapp/shared": "*",
+    "@fitapp/shared": "workspace:*",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
     "@fastify/cors": "^10.0.2",

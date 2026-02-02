@@ -33,9 +33,19 @@ export const saveRecipeSchema = z.object({
   isFromFrigoMode: z.boolean().optional(),
 });
 
+export const userProfileSchema = z.object({
+  goal: z.enum(['lose_weight', 'gain_muscle', 'maintain', 'improve_health']).optional(),
+  currentWeight: z.number().positive().max(500).optional(),
+  targetWeight: z.number().positive().max(500).optional(),
+  activityLevel: z.enum(['sedentary', 'light', 'moderate', 'active', 'very_active']).optional(),
+  allergies: z.array(z.string().max(100)).max(20).optional(),
+  dietaryRestrictions: z.array(z.string().max(100)).max(20).optional(),
+});
+
 export const frigoModeMessageSchema = z.object({
   message: z.string().min(1).max(1000),
   ingredients: z.array(z.string().max(100)).max(30).optional(),
+  userProfile: userProfileSchema.optional(),
 });
 
 export type GenerateRecipeInput = z.infer<typeof generateRecipeSchema>;
