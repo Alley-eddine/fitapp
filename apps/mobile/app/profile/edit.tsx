@@ -8,14 +8,23 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  Modal,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '../../src/hooks/useTheme';
-import { profileApi } from '../../src/lib/api';
+import { profileApi, userApi } from '../../src/lib/api';
 import type { Profile, ProfileUpdate } from '../../src/lib/api';
 import { spacing, borderRadius, fontSize } from '../../src/constants/theme';
+import { useAuthStore } from '../../src/store/auth';
+import { useImagePicker } from '../../src/hooks/useImagePicker';
+
+// Helper to check if avatar is a URL or emoji
+const isImageUrl = (value: string): boolean => {
+  return value.startsWith('http://') || value.startsWith('https://');
+};
 
 type ActivityLevel = Profile['activityLevel'];
 type Goal = Profile['goal'];
@@ -33,6 +42,12 @@ const GOALS: { value: Goal; label: string }[] = [
   { value: 'gain_muscle', label: 'Gain Muscle' },
   { value: 'maintain', label: 'Maintain' },
   { value: 'improve_endurance', label: 'Improve Endurance' },
+];
+
+const AVATARS = [
+  '💪', '🏃', '🧘', '🏋️', '🚴', '⚡',
+  '🔥', '🥗', '🍎', '💧', '🎯', '🏆',
+  '👤', '🦁', '🐺', '🦅', '🐉', '🌟',
 ];
 
 type Gender = 'male' | 'female';
@@ -82,6 +97,25 @@ export default function EditProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const currentUser = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+
+  // User info state
+  const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState('💪');
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  // Image picker
+  const { pickFromGallery, takePhoto, isUploading } = useImagePicker({
+    onSuccess: (url) => {
+      setAvatar(url);
+      setShowAvatarPicker(false);
+    },
+    folder: 'avatars',
+  });
+
   // Form state
   const [currentWeight, setCurrentWeight] = useState('');
   const [targetWeight, setTargetWeight] = useState('');
@@ -111,15 +145,24 @@ export default function EditProfileScreen() {
 
   const loadProfile = async () => {
     try {
-      const data = await profileApi.get();
-      setCurrentWeight(data.currentWeight?.toString() || '');
-      setTargetWeight(data.targetWeight?.toString() || '');
-      setHeight(data.height?.toString() || '');
-      setAge(calculateAgeFromBirthDate(data.birthDate));
-      setGender(data.gender || 'male');
-      setActivityLevel(data.activityLevel);
-      setGoal(data.goal);
-      setDailyCalories(data.dailyCalorieTarget?.toString() || '');
+      const [profileData, userData] = await Promise.all([
+        profileApi.get(),
+        userApi.get(),
+      ]);
+
+      // User info
+      setName(userData.name || '');
+      setAvatar(userData.avatarUrl || '💪');
+
+      // Profile info
+      setCurrentWeight(profileData.currentWeight?.toString() || '');
+      setTargetWeight(profileData.targetWeight?.toString() || '');
+      setHeight(profileData.height?.toString() || '');
+      setAge(calculateAgeFromBirthDate(profileData.birthDate));
+      setGender(profileData.gender || 'male');
+      setActivityLevel(profileData.activityLevel);
+      setGoal(profileData.goal);
+      setDailyCalories(profileData.dailyCalorieTarget?.toString() || '');
     } catch {
       Alert.alert('Error', 'Failed to load profile');
     } finally {
@@ -137,18 +180,35 @@ export default function EditProfileScreen() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updates: ProfileUpdate = {};
+      const profileUpdates: ProfileUpdate = {};
 
-      if (currentWeight) updates.currentWeight = parseFloat(currentWeight);
-      if (targetWeight) updates.targetWeight = parseFloat(targetWeight);
-      if (height) updates.height = parseInt(height, 10);
-      if (age) updates.birthDate = calculateBirthDateFromAge(parseInt(age, 10));
-      if (dailyCalories) updates.dailyCalorieTarget = parseInt(dailyCalories, 10);
-      updates.gender = gender;
-      updates.activityLevel = activityLevel;
-      updates.goal = goal;
+      if (currentWeight) profileUpdates.currentWeight = parseFloat(currentWeight);
+      if (targetWeight) profileUpdates.targetWeight = parseFloat(targetWeight);
+      if (height) profileUpdates.height = parseInt(height, 10);
+      if (age) profileUpdates.birthDate = calculateBirthDateFromAge(parseInt(age, 10));
+      if (dailyCalories) profileUpdates.dailyCalorieTarget = parseInt(dailyCalories, 10);
+      profileUpdates.gender = gender;
+      profileUpdates.activityLevel = activityLevel;
+      profileUpdates.goal = goal;
 
-      await profileApi.update(updates);
+      // Save both user and profile data
+      const [updatedUser] = await Promise.all([
+        userApi.update({ name: name || undefined, avatarUrl: avatar || undefined }),
+        profileApi.update(profileUpdates),
+      ]);
+
+      // Update auth store with new user info
+      if (currentUser && token) {
+        await setAuth(
+          {
+            ...currentUser,
+            name: updatedUser.name || currentUser.name,
+            avatar: updatedUser.avatarUrl || currentUser.avatar,
+          },
+          token
+        );
+      }
+
       Alert.alert('Success', 'Profile updated!', [
         { text: 'OK', onPress: () => { router.back(); } },
       ]);
@@ -178,6 +238,127 @@ export default function EditProfileScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Avatar & Name Section */}
+        <View style={styles.avatarSection}>
+          <Pressable
+            style={[styles.avatarButton, { backgroundColor: colors.surface }]}
+            onPress={() => { setShowAvatarPicker(true); }}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : isImageUrl(avatar) ? (
+              <Image source={{ uri: avatar }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarEmoji}>{avatar}</Text>
+            )}
+            <View style={[styles.editBadge, { backgroundColor: colors.primary }]}>
+              <Ionicons name="camera" size={12} color="#fff" />
+            </View>
+          </Pressable>
+          <View style={styles.nameInputContainer}>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Display Name</Text>
+            <TextInput
+              style={[styles.nameInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
+              value={name}
+              onChangeText={setName}
+              placeholder="Your name"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+        </View>
+
+        {/* Avatar Picker Modal - Source Selection */}
+        <Modal
+          visible={showAvatarPicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => { setShowAvatarPicker(false); }}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => { setShowAvatarPicker(false); }}
+          >
+            <View
+              style={[styles.avatarPickerContainer, { backgroundColor: colors.surface }]}
+              onStartShouldSetResponder={() => true}
+            >
+              <Text style={[styles.avatarPickerTitle, { color: colors.text }]}>Profile Picture</Text>
+
+              {/* Photo options */}
+              <View style={styles.photoOptions}>
+                <Pressable
+                  style={[styles.photoOption, { backgroundColor: colors.background }]}
+                  onPress={() => { void pickFromGallery(); }}
+                >
+                  <Ionicons name="images" size={28} color={colors.primary} />
+                  <Text style={[styles.photoOptionText, { color: colors.text }]}>Gallery</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.photoOption, { backgroundColor: colors.background }]}
+                  onPress={() => { void takePhoto(); }}
+                >
+                  <Ionicons name="camera" size={28} color={colors.primary} />
+                  <Text style={[styles.photoOptionText, { color: colors.text }]}>Camera</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.photoOption, { backgroundColor: colors.background }]}
+                  onPress={() => { setShowEmojiPicker(true); setShowAvatarPicker(false); }}
+                >
+                  <Text style={styles.emojiOptionIcon}>😀</Text>
+                  <Text style={[styles.photoOptionText, { color: colors.text }]}>Emoji</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Emoji Picker Modal */}
+        <Modal
+          visible={showEmojiPicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => { setShowEmojiPicker(false); }}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => { setShowEmojiPicker(false); }}
+          >
+            <View
+              style={[styles.avatarPickerContainer, { backgroundColor: colors.surface }]}
+              onStartShouldSetResponder={() => true}
+            >
+              <View style={styles.modalHeader}>
+                <Pressable onPress={() => { setShowEmojiPicker(false); setShowAvatarPicker(true); }}>
+                  <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </Pressable>
+                <Text style={[styles.avatarPickerTitle, { color: colors.text, flex: 1, marginBottom: 0 }]}>
+                  Choose Emoji
+                </Text>
+                <View style={{ width: 24 }} />
+              </View>
+              <View style={styles.avatarGrid}>
+                {AVATARS.map((emoji) => (
+                  <Pressable
+                    key={emoji}
+                    style={[
+                      styles.avatarOption,
+                      { backgroundColor: colors.background },
+                      avatar === emoji && { borderColor: colors.primary, borderWidth: 2 },
+                    ]}
+                    onPress={() => {
+                      setAvatar(emoji);
+                      setShowEmojiPicker(false);
+                    }}
+                  >
+                    <Text style={styles.avatarOptionEmoji}>{emoji}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
+
         {/* Weight Section */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WEIGHT (kg)</Text>
         <View style={[styles.row, { backgroundColor: colors.surface }]}>
@@ -442,4 +623,109 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: '600' },
+  // Avatar & Name styles
+  avatarSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  avatarButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  avatarEmoji: {
+    fontSize: 40,
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nameInputContainer: {
+    flex: 1,
+  },
+  nameInput: {
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: fontSize.md,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  avatarPickerContainer: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+  },
+  avatarPickerTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.md,
+  },
+  avatarOption: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarOptionEmoji: {
+    fontSize: 28,
+  },
+  avatarImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+  },
+  photoOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: spacing.md,
+  },
+  photoOption: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+  },
+  photoOptionText: {
+    fontSize: fontSize.sm,
+    fontWeight: '500',
+  },
+  emojiOptionIcon: {
+    fontSize: 28,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    gap: spacing.md,
+  },
 });

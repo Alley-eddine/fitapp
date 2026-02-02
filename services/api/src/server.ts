@@ -6,6 +6,7 @@ import { workoutRoutes } from './routes/workout.routes.js';
 import { weightRoutes } from './routes/weight.routes.js';
 import { stepsRoutes } from './routes/steps.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
+import { userRoutes } from './routes/user.routes.js';
 import { env } from './config/env.js';
 
 collectDefaultMetrics();
@@ -23,6 +24,7 @@ export const createServer = async () => {
 
   // Routes
   await fastify.register(healthRoutes);
+  await fastify.register(userRoutes, { prefix: '/api' });
   await fastify.register(profileRoutes, { prefix: '/api' });
   await fastify.register(workoutRoutes, { prefix: '/api' });
   await fastify.register(weightRoutes, { prefix: '/api' });

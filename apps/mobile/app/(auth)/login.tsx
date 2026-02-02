@@ -43,10 +43,17 @@ export default function LoginScreen() {
       : 'fitcoach://auth/callback';
     const authUrl = `${AUTH_URL}/auth/google?redirect_uri=${encodeURIComponent(callbackUrl)}`;
 
+    console.log('🔗 Google login URL:', authUrl);
+    console.log('📱 Platform:', Platform.OS);
+    console.log('🔙 Callback URL:', callbackUrl);
+
     if (Platform.OS === 'web') {
       window.location.href = authUrl;
     } else {
-      void Linking.openURL(authUrl);
+      Linking.openURL(authUrl).catch((err) => {
+        console.error('❌ Failed to open URL:', err);
+        setError(`Impossible d'ouvrir le lien: ${err instanceof Error ? err.message : 'Erreur inconnue'}`);
+      });
     }
   };
 
@@ -62,14 +69,22 @@ export default function LoginScreen() {
     try {
       const endpoint = mode === 'register' ? '/auth/register' : '/auth/login';
       const body = mode === 'register' ? { email, password, name } : { email, password };
+      const url = `${AUTH_URL}${endpoint}`;
 
-      const response = await fetch(`${AUTH_URL}${endpoint}`, {
+      console.log('🔐 Auth attempt:', { url, mode });
+
+      const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'bypass-tunnel-reminder': 'true',
+        },
         body: JSON.stringify(body),
       });
 
+      console.log('📡 Response status:', response.status);
       const data = (await response.json()) as AuthResponse;
+      console.log('📦 Response data:', data);
 
       if (!response.ok) {
         setError(data.error ?? 'Erreur de connexion');
@@ -102,8 +117,9 @@ export default function LoginScreen() {
           router.replace('/(onboarding)/profile-setup' as never);
         }
       }
-    } catch {
-      setError('Erreur de connexion au serveur');
+    } catch (err) {
+      console.error('❌ Auth error:', err);
+      setError(`Erreur: ${err instanceof Error ? err.message : 'Connexion au serveur impossible'}`);
     } finally {
       setLoading(false);
     }

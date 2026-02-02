@@ -22,5 +22,11 @@ export const createProfileSchema = z.object({
 
 export const updateProfileSchema = createProfileSchema.partial();
 
+export const updateUserSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  avatarUrl: z.string().max(500).optional(),
+});
+
 export type CreateProfileInput = z.infer<typeof createProfileSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;

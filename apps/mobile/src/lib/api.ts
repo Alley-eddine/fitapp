@@ -165,6 +165,24 @@ export interface StepsLog {
   loggedAt: string;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  subscriptionTier: 'free' | 'pro' | 'premium';
+}
+
+export interface UserUpdate {
+  name?: string;
+  avatarUrl?: string;
+}
+
+export const userApi = {
+  get: () => api.get<User>('/api/user'),
+  update: (data: UserUpdate) => api.put<User>('/api/user', data),
+};
+
 export const profileApi = {
   get: () => api.get<Profile>('/api/profile'),
   update: (data: ProfileUpdate) => api.put<Profile>('/api/profile', data),
