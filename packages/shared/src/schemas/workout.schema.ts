@@ -7,16 +7,16 @@ export const exerciseTypeSchema = z.enum(['muscu', 'cardio', 'hiit']);
 export const exerciseInputSchema = z.object({
   name: z.string().min(1).max(255),
   exerciseType: exerciseTypeSchema.optional().default('muscu'),
-  // Muscu fields
-  sets: z.number().int().nonnegative().max(100).optional(),
-  reps: z.number().int().nonnegative().max(1000).optional(),
-  weightKg: z.number().nonnegative().max(1000).optional(),
+  // Muscu fields (coerce: the app/DB may send numeric strings like "60.00")
+  sets: z.coerce.number().int().nonnegative().max(100).optional(),
+  reps: z.coerce.number().int().nonnegative().max(1000).optional(),
+  weightKg: z.coerce.number().nonnegative().max(1000).optional(),
   // Cardio field
-  durationSeconds: z.number().int().nonnegative().max(86400).optional(),
+  durationSeconds: z.coerce.number().int().nonnegative().max(86400).optional(),
   // HIIT fields
-  workSeconds: z.number().int().positive().max(600).optional(),
-  restSeconds: z.number().int().positive().max(600).optional(),
-  rounds: z.number().int().positive().max(100).optional(),
+  workSeconds: z.coerce.number().int().positive().max(600).optional(),
+  restSeconds: z.coerce.number().int().positive().max(600).optional(),
+  rounds: z.coerce.number().int().positive().max(100).optional(),
 });
 
 export const createWorkoutSchema = z.object({
