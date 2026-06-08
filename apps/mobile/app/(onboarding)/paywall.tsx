@@ -85,12 +85,16 @@ export default function PaywallScreen() {
 
       // Paid tier: create a Stripe Checkout session and open it.
       const { url } = await paymentApi.createCheckout(selectedTier);
-      const result = await WebBrowser.openBrowserAsync(url);
+      await WebBrowser.openBrowserAsync(url);
 
-      // Whatever the outcome (paid, cancelled or dismissed), continue into the
-      // app. The subscription status is updated server-side by the Stripe
-      // webhook, so it will be reflected on the next profile/user refresh.
-      void result;
+      // Back from Checkout: reconcile the subscription directly with Stripe so
+      // the upgrade (and invoice email) is applied immediately, without relying
+      // on the webhook being delivered.
+      try {
+        await paymentApi.sync();
+      } catch {
+        // Non-blocking: the webhook will reconcile later if sync fails.
+      }
       router.replace('/(onboarding)/app-tour' as never);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';

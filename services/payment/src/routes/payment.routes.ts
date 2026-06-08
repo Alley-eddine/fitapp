@@ -6,6 +6,7 @@ import { PLANS, formatAmount } from '../config/plans.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { getUserById, setStripeCustomerId } from '../services/subscription.service.js';
 import { handleStripeEvent } from '../services/webhook.service.js';
+import { syncSubscription } from '../services/sync.service.js';
 
 const checkoutSchema = z.object({ tier: z.enum(['pro', 'premium']) });
 
@@ -74,6 +75,26 @@ export const paymentRoutes = (fastify: FastifyInstance) => {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Checkout failed';
         console.error('Checkout error:', err);
+        return reply.status(502).send({ error: message });
+      }
+    }
+  );
+
+  // --- Sync subscription from Stripe (called on return from Checkout) ----
+  fastify.post(
+    '/payment/sync',
+    { preHandler: [authMiddleware] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!stripe) return reply.status(503).send({ error: 'Stripe is not configured' });
+      const user = request.user;
+      if (!user) return reply.status(401).send({ error: 'Unauthorized' });
+
+      try {
+        const result = await syncSubscription(user.sub);
+        return await reply.send(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Sync failed';
+        console.error('Sync error:', err);
         return reply.status(502).send({ error: message });
       }
     }
