@@ -24,6 +24,24 @@ export const paymentRoutes = (fastify: FastifyInstance) => {
     return reply.send({ plans });
   });
 
+  // --- Checkout return page (where Stripe redirects after payment) -------
+  fastify.get('/payment/return', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { status } = request.query as { status?: string };
+    const ok = status === 'success';
+    const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${ok ? 'Paiement réussi' : 'Paiement annulé'}</title></head>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
+  <div style="text-align:center;max-width:420px;padding:32px">
+    <div style="font-size:56px">${ok ? '✅' : '🚫'}</div>
+    <h1 style="color:#22d3ee;font-size:24px">${ok ? 'Paiement réussi !' : 'Paiement annulé'}</h1>
+    <p style="color:#94a3b8;font-size:16px">${ok ? 'Votre abonnement est activé. Vous pouvez fermer cette fenêtre et revenir à l’application.' : 'Aucun montant n’a été débité. Vous pouvez fermer cette fenêtre.'}</p>
+  </div>
+</body></html>`;
+    return reply.type('text/html').send(html);
+  });
+
   // --- Create a Checkout session ----------------------------------------
   fastify.post(
     '/payment/checkout',
@@ -67,8 +85,8 @@ export const paymentRoutes = (fastify: FastifyInstance) => {
           client_reference_id: dbUser.id,
           line_items: [{ price: plan.priceId, quantity: 1 }],
           subscription_data: { metadata: { userId: dbUser.id } },
-          success_url: `${env.FRONTEND_URL}/paywall?status=success`,
-          cancel_url: `${env.FRONTEND_URL}/paywall?status=cancel`,
+          success_url: `${env.PAYMENT_PUBLIC_URL}/api/payment/return?status=success`,
+          cancel_url: `${env.PAYMENT_PUBLIC_URL}/api/payment/return?status=cancel`,
         });
 
         return await reply.send({ url: session.url, sessionId: session.id });
