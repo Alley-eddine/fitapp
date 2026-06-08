@@ -34,3 +34,8 @@ coverage/
 .prettiercache
 *.tsbuildinfo
 .expo/
+
+# Generated config artifacts (from tsc on knip.config.ts)
+knip.config.js
+knip.config.d.ts
+knip.config.*.map

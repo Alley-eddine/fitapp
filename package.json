@@ -10,6 +10,7 @@
     "dev:auth": "pnpm --filter @fitapp/auth dev",
     "dev:api": "pnpm --filter @fitapp/api dev",
     "dev:ai": "pnpm --filter @fitapp/ai dev",
+    "dev:notifications": "pnpm --filter @fitapp/notifications dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "eslint .",
