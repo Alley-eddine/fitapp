@@ -1,6 +1,7 @@
 import { useAuthStore } from '../store/auth';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3002';
+const PAYMENT_URL = process.env.EXPO_PUBLIC_PAYMENT_URL || 'http://localhost:3005';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -70,6 +71,7 @@ class ApiClient {
 }
 
 export const api = new ApiClient(API_URL);
+export const paymentClient = new ApiClient(PAYMENT_URL);
 
 export interface Profile {
   id: string;
@@ -315,6 +317,23 @@ export const recipeApi = {
   get: (id: string) => api.get<Recipe>(`/api/recipes/${id}`),
   save: (data: SaveRecipeInput) => api.post<Recipe>('/api/recipes', data),
   delete: (id: string) => api.delete(`/api/recipes/${id}`),
+};
+
+// Payment / subscriptions
+export interface Plan {
+  tier: 'pro' | 'premium';
+  name: string;
+  price: string;
+  amount: number;
+  currency: string;
+  interval: string;
+}
+
+export const paymentApi = {
+  getPlans: () => paymentClient.get<{ plans: Plan[] }>('/api/payment/plans'),
+  createCheckout: (tier: 'pro' | 'premium') =>
+    paymentClient.post<{ url: string; sessionId: string }>('/api/payment/checkout', { tier }),
+  openPortal: () => paymentClient.post<{ url: string }>('/api/payment/portal', {}),
 };
 
 export const nutritionApi = {
