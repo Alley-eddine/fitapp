@@ -341,6 +341,34 @@ export const paymentApi = {
     ),
 };
 
+// Exercise catalog (served by the API from an open-source dataset)
+export interface MuscleGroup {
+  key: string;
+  label: string;
+}
+
+export interface CatalogExercise {
+  id: string;
+  name: string;
+  primaryMuscles: string[];
+  equipment: string | null;
+  category: string | null;
+  level: string | null;
+}
+
+export const exerciseApi = {
+  groups: () => api.get<{ groups: MuscleGroup[] }>('/api/exercises/groups'),
+  list: (group?: string, search?: string) => {
+    const params = new URLSearchParams();
+    if (group) params.set('group', group);
+    if (search) params.set('search', search);
+    const qs = params.toString();
+    return api.get<{ items: CatalogExercise[]; total: number }>(
+      `/api/exercises${qs ? `?${qs}` : ''}`
+    );
+  },
+};
+
 export const nutritionApi = {
   generateRecipe: (data: GenerateRecipeInput) =>
     api.post<{ recipe: GeneratedRecipe }>('/api/nutrition/generate-recipe', data),
