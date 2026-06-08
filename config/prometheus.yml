@@ -26,3 +26,8 @@ scrape_configs:
     static_configs:
       - targets: ['host.docker.internal:3004']
     metrics_path: /metrics
+
+  - job_name: 'payment-service'
+    static_configs:
+      - targets: ['host.docker.internal:3005']
+    metrics_path: /metrics
