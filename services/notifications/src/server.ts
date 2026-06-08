@@ -22,8 +22,8 @@ export const createServer = async () => {
 
   // Prometheus metrics endpoint
   fastify.get('/metrics', async (_request, reply) => {
-    await reply.header('Content-Type', register.contentType);
-    return register.metrics();
+    const metrics = await register.metrics();
+    await reply.header('Content-Type', register.contentType).send(metrics);
   });
 
   return fastify;
