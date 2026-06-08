@@ -17,6 +17,8 @@ CREATE TYPE notification_status AS ENUM ('sent', 'failed', 'simulated');
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
+    email_verified BOOLEAN DEFAULT FALSE,
+    phone VARCHAR(30),
     name VARCHAR(255),
     avatar_url VARCHAR(500),
     password_hash VARCHAR(255),
@@ -55,8 +57,7 @@ CREATE TABLE weight_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     weight DECIMAL(5,2) NOT NULL,
-    logged_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(user_id, logged_at::DATE)
+    logged_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Workouts
@@ -134,6 +135,24 @@ CREATE TABLE ai_generations (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Email verification tokens (one-time, expiring)
+CREATE TABLE email_verification_tokens (
+    token VARCHAR(255) PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Password reset codes sent by SMS (6 digits, one-time, expiring)
+CREATE TABLE password_reset_codes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    code VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Notification delivery logs (email / sms / push tracking & reporting)
 CREATE TABLE notification_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -151,11 +170,14 @@ CREATE TABLE notification_logs (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_provider ON users(provider, provider_id);
 CREATE INDEX idx_weight_logs_user_date ON weight_logs(user_id, logged_at DESC);
+CREATE UNIQUE INDEX idx_weight_logs_user_day ON weight_logs(user_id, (logged_at::date));
 CREATE INDEX idx_workouts_user_date ON workouts(user_id, logged_at DESC);
 CREATE INDEX idx_steps_logs_user_date ON steps_logs(user_id, logged_at DESC);
 CREATE INDEX idx_recipes_user ON recipes(user_id);
 CREATE INDEX idx_ai_generations_user_date ON ai_generations(user_id, created_at DESC);
 CREATE INDEX idx_notification_logs_created ON notification_logs(created_at DESC);
+CREATE INDEX idx_email_verification_user ON email_verification_tokens(user_id);
+CREATE INDEX idx_password_reset_user ON password_reset_codes(user_id);
 
 -- Function to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
