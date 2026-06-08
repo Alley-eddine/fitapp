@@ -23,6 +23,18 @@ const fmtDate = (unixSeconds: number): string =>
   new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(unixSeconds * 1000));
 
 /**
+ * Current-period end (unix seconds). In older Stripe API versions this lived on
+ * the subscription; since 2025 it moved to the subscription item. Read both.
+ */
+const periodEndUnix = (subscription: Stripe.Subscription): number | null => {
+  const item = subscription.items.data[0] as
+    | (Stripe.SubscriptionItem & { current_period_end?: number })
+    | undefined;
+  const sub = subscription as Stripe.Subscription & { current_period_end?: number };
+  return item?.current_period_end ?? sub.current_period_end ?? null;
+};
+
+/**
  * Handles the Stripe webhook events that matter for subscription lifecycle.
  * Updates the user's status in DB and triggers transactional emails.
  */
@@ -49,7 +61,8 @@ export const handleStripeEvent = async (event: Stripe.Event): Promise<void> => {
       const priceId = subscription.items.data[0]?.price.id;
       const tier = tierFromPriceId(priceId);
       const active = subscription.status === 'active' || subscription.status === 'trialing';
-      const endsAt = new Date(subscription.current_period_end * 1000);
+      const endUnix = periodEndUnix(subscription);
+      const endsAt = endUnix ? new Date(endUnix * 1000) : null;
 
       await updateSubscription(user.id, active ? tier : 'free', active ? endsAt : null);
 
@@ -59,7 +72,7 @@ export const handleStripeEvent = async (event: Stripe.Event): Promise<void> => {
             to: user.email,
             name: user.name,
             planName: planName(tier),
-            periodEnd: fmtDate(subscription.current_period_end),
+            periodEnd: endUnix ? fmtDate(endUnix) : undefined,
           });
         } catch (err) {
           console.error('subscription-started email failed:', err);
