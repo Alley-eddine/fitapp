@@ -334,6 +334,11 @@ export const paymentApi = {
   createCheckout: (tier: 'pro' | 'premium') =>
     paymentClient.post<{ url: string; sessionId: string }>('/api/payment/checkout', { tier }),
   openPortal: () => paymentClient.post<{ url: string }>('/api/payment/portal', {}),
+  sync: () =>
+    paymentClient.post<{ subscription: 'free' | 'pro' | 'premium'; synced: boolean }>(
+      '/api/payment/sync',
+      {}
+    ),
 };
 
 export const nutritionApi = {
