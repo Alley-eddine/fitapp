@@ -10,6 +10,8 @@ CREATE TYPE workout_type AS ENUM ('weights', 'cardio', 'hiit', 'running', 'yoga'
 CREATE TYPE activity_level AS ENUM ('sedentary', 'light', 'moderate', 'active', 'very_active');
 CREATE TYPE fitness_goal AS ENUM ('lose_weight', 'gain_muscle', 'maintain', 'improve_endurance');
 CREATE TYPE gender AS ENUM ('male', 'female');
+CREATE TYPE notification_channel AS ENUM ('email', 'sms', 'push');
+CREATE TYPE notification_status AS ENUM ('sent', 'failed', 'simulated');
 
 -- Users
 CREATE TABLE users (
@@ -132,6 +134,19 @@ CREATE TABLE ai_generations (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Notification delivery logs (email / sms / push tracking & reporting)
+CREATE TABLE notification_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    channel notification_channel NOT NULL,
+    recipient VARCHAR(255) NOT NULL,
+    template VARCHAR(100),
+    subject VARCHAR(255),
+    status notification_status NOT NULL,
+    provider_id VARCHAR(255),
+    error TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_provider ON users(provider, provider_id);
@@ -140,6 +155,7 @@ CREATE INDEX idx_workouts_user_date ON workouts(user_id, logged_at DESC);
 CREATE INDEX idx_steps_logs_user_date ON steps_logs(user_id, logged_at DESC);
 CREATE INDEX idx_recipes_user ON recipes(user_id);
 CREATE INDEX idx_ai_generations_user_date ON ai_generations(user_id, created_at DESC);
+CREATE INDEX idx_notification_logs_created ON notification_logs(created_at DESC);
 
 -- Function to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
