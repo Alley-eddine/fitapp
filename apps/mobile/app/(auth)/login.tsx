@@ -29,6 +29,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -68,7 +69,7 @@ export default function LoginScreen() {
 
     try {
       const endpoint = mode === 'register' ? '/auth/register' : '/auth/login';
-      const body = mode === 'register' ? { email, password, name } : { email, password };
+      const body = mode === 'register' ? { email, password, name, phone } : { email, password };
       const url = `${AUTH_URL}${endpoint}`;
 
       console.log('🔐 Auth attempt:', { url, mode });
@@ -225,14 +226,24 @@ export default function LoginScreen() {
         </Text>
 
         {mode === 'register' && (
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-            placeholder="Full Name"
-            placeholderTextColor={theme.textSecondary}
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
+          <>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
+              placeholder="Full Name"
+              placeholderTextColor={theme.textSecondary}
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+            />
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
+              placeholder="Téléphone (ex: +33612345678)"
+              placeholderTextColor={theme.textSecondary}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+          </>
         )}
 
         <TextInput
@@ -255,6 +266,12 @@ export default function LoginScreen() {
         />
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        {mode === 'login' && (
+          <Pressable onPress={() => { router.push('/(auth)/forgot-password' as never); }}>
+            <Text style={[styles.forgotLink, { color: '#f97316' }]}>Mot de passe oublié ?</Text>
+          </Pressable>
+        )}
 
         <Pressable
           style={[styles.submitButton, { backgroundColor: '#f97316', opacity: loading ? 0.7 : 1 }]}
@@ -352,6 +369,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
   },
   errorText: { color: '#ef4444', fontSize: fontSize.sm, marginBottom: spacing.md, textAlign: 'center' },
+  forgotLink: { textAlign: 'right', fontSize: fontSize.sm, marginBottom: spacing.sm, fontWeight: '500' },
   submitButton: {
     paddingVertical: spacing.md,
     borderRadius: borderRadius.full,
