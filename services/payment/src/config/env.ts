@@ -24,6 +24,8 @@ const envSchema = z.object({
 
   // Where Stripe Checkout redirects the user back to.
   FRONTEND_URL: z.string().url().default('http://localhost:8081'),
+  // Public base URL of this payment service (for the Checkout return page).
+  PAYMENT_PUBLIC_URL: z.string().url().default('http://localhost:3005'),
 });
 
 const parsed = envSchema.safeParse(process.env);
