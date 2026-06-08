@@ -11,6 +11,7 @@
     "dev:api": "pnpm --filter @fitapp/api dev",
     "dev:ai": "pnpm --filter @fitapp/ai dev",
     "dev:notifications": "pnpm --filter @fitapp/notifications dev",
+    "dev:payment": "pnpm --filter @fitapp/payment dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "eslint .",
