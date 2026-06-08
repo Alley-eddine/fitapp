@@ -87,7 +87,10 @@ export default function HomeScreen() {
               <Text style={[styles.userName, { color: colors.text }]}>{user?.name || 'User'} 💪</Text>
             </View>
           </View>
-          <Pressable style={[styles.notifButton, { backgroundColor: colors.surface }]}>
+          <Pressable
+            style={[styles.notifButton, { backgroundColor: colors.surface }]}
+            onPress={() => { router.push('/notifications' as never); }}
+          >
             <Ionicons name="notifications" size={22} color={colors.primary} />
           </Pressable>
         </View>
