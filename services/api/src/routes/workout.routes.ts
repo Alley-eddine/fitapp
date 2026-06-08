@@ -261,16 +261,20 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
       const userId = request.user?.sub;
       if (!userId) return reply.status(401).send({ error: 'Unauthorized' });
 
-      const result = await query<{ count: string; total_minutes: string }>(
-        `SELECT COUNT(*) as count, COALESCE(SUM(duration_minutes), 0) as total_minutes
+      const result = await query<{ count: string; total_minutes: string; total_calories: string }>(
+        `SELECT COUNT(*) as count,
+                COALESCE(SUM(duration_minutes), 0) as total_minutes,
+                COALESCE(SUM(calories_burned), 0) as total_calories
          FROM workouts
          WHERE user_id = $1 AND logged_at >= NOW() - INTERVAL '7 days'`,
         [userId]
       );
 
+      const row = result.rows[0];
       return await reply.send({
-        workoutsThisWeek: parseInt(result.rows[0]?.count ?? '0'),
-        totalMinutes: parseInt(result.rows[0]?.total_minutes ?? '0'),
+        totalWorkouts: parseInt(row?.count ?? '0'),
+        totalDuration: parseInt(row?.total_minutes ?? '0'),
+        totalCalories: parseInt(row?.total_calories ?? '0'),
       });
     }
   );
