@@ -196,7 +196,7 @@ export const workoutApi = {
   update: (id: string, data: CreateWorkoutInput) => api.put<Workout>(`/api/workouts/${id}`, data),
   get: (id: string) => api.get<Workout>(`/api/workouts/${id}`),
   delete: (id: string) => api.delete(`/api/workouts/${id}`),
-  weeklyStats: () => api.get<{ workoutsThisWeek: number; totalMinutes: number }>('/api/workouts/stats/weekly'),
+  weeklyStats: () => api.get<{ totalWorkouts: number; totalDuration: number; totalCalories: number }>('/api/workouts/stats/weekly'),
 };
 
 export const weightApi = {
@@ -367,6 +367,21 @@ export const exerciseApi = {
       `/api/exercises${qs ? `?${qs}` : ''}`
     );
   },
+};
+
+// Notification history (delivery log for the current user)
+export interface NotificationLog {
+  id: string;
+  channel: 'email' | 'sms' | 'push';
+  recipient: string;
+  template: string | null;
+  subject: string | null;
+  status: 'sent' | 'failed' | 'simulated';
+  createdAt: string;
+}
+
+export const notificationApi = {
+  history: () => api.get<{ items: NotificationLog[] }>('/api/notifications'),
 };
 
 export const nutritionApi = {
