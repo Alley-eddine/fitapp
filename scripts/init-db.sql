@@ -60,11 +60,11 @@ CREATE TABLE weight_logs (
     logged_at TIMESTAMP DEFAULT NOW()
 );
 
--- Workouts
+-- Workouts (type holds a free-text session name, e.g. "Dos / Biceps")
 CREATE TABLE workouts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    type workout_type NOT NULL,
+    type VARCHAR(100) NOT NULL,
     duration_minutes INTEGER NOT NULL,
     calories_burned INTEGER,
     notes TEXT,
@@ -77,10 +77,14 @@ CREATE TABLE workout_exercises (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workout_id UUID REFERENCES workouts(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
+    exercise_type VARCHAR(20) DEFAULT 'muscu',
     sets INTEGER,
     reps INTEGER,
     weight_kg DECIMAL(5,2),
     duration_seconds INTEGER,
+    work_seconds INTEGER,
+    rest_seconds INTEGER,
+    rounds INTEGER,
     order_index INTEGER NOT NULL
 );
 
