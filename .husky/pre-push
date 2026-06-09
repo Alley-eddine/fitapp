@@ -1,13 +1,10 @@
-echo "🧪 Running tests..."
-npm test || exit 1
+echo "🔎 Typecheck..."
+pnpm typecheck || exit 1
 
-echo "🔍 Running lint..."
-npm run lint || exit 1
+echo "🔍 Lint..."
+pnpm lint || exit 1
 
-echo "🔎 Running knip..."
-npm run knip || exit 1
+echo "🧪 Tests..."
+pnpm test || exit 1
 
-echo "🏗️ Running build..."
-npm run build || exit 1
-
-echo "✅ All checks passed"
+echo "✅ Pre-push OK (build + knip run in CI)"
