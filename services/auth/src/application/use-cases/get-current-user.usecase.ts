@@ -6,6 +6,7 @@ interface UserResult {
   email: string;
   name: string | null;
   avatarUrl: string | null;
+  role: string;
   subscription: string;
   themePreference: string;
 }
@@ -29,6 +30,7 @@ export class GetCurrentUserUseCase {
       email: user.email,
       name: user.name,
       avatarUrl: user.avatarUrl,
+      role: user.role,
       subscription: user.subscription,
       themePreference: user.themePreference,
     };

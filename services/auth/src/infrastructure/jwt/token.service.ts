@@ -19,6 +19,7 @@ export class TokenService implements ITokenService {
       sub: user.id,
       email: user.email,
       subscription: user.subscription,
+      role: user.role,
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
@@ -33,6 +34,7 @@ export class TokenService implements ITokenService {
       sub: user.id,
       email: user.email,
       subscription: user.subscription,
+      role: user.role,
       type: 'refresh',
     })
       .setProtectedHeader({ alg: 'HS256' })
@@ -61,6 +63,7 @@ export class TokenService implements ITokenService {
       sub: payload.sub as string,
       email: payload.email as string,
       subscription: payload.subscription as UserEntity['subscription'],
+      role: (payload.role as UserEntity['role']) ?? 'user',
     };
   }
 
@@ -78,6 +81,7 @@ export class TokenService implements ITokenService {
       sub: payload.sub as string,
       email: payload.email as string,
       subscription: payload.subscription as UserEntity['subscription'],
+      role: (payload.role as UserEntity['role']) ?? 'user',
     };
   }
 }
