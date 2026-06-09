@@ -10,6 +10,8 @@
     "dev:auth": "pnpm --filter @fitapp/auth dev",
     "dev:api": "pnpm --filter @fitapp/api dev",
     "dev:ai": "pnpm --filter @fitapp/ai dev",
+    "dev:notifications": "pnpm --filter @fitapp/notifications dev",
+    "dev:payment": "pnpm --filter @fitapp/payment dev",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "eslint .",
@@ -29,5 +31,8 @@
     "prettier": "^3.4.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.54.0"
+  },
+  "dependencies": {
+    "metro-runtime": "^0.83.3"
   }
 }

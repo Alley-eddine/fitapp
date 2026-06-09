@@ -30,6 +30,12 @@
     },
     {
       "path": "./services/ai"
+    },
+    {
+      "path": "./services/notifications"
+    },
+    {
+      "path": "./services/payment"
     }
   ]
 }

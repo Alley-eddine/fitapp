@@ -16,6 +16,9 @@ build/
 *.swp
 *.swo
 
+# Claude Code — versionner la gouvernance (.claude/), ignorer le local perso
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db
@@ -33,3 +36,8 @@ coverage/
 .prettiercache
 *.tsbuildinfo
 .expo/
+
+# Generated config artifacts (from tsc on knip.config.ts)
+knip.config.js
+knip.config.d.ts
+knip.config.*.map

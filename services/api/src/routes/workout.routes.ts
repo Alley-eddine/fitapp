@@ -29,6 +29,30 @@ interface ExerciseRow {
   order_index: number;
 }
 
+// Rough MET values per exercise type for a calorie-burn estimate.
+const MET_BY_TYPE: Record<string, number> = { muscu: 5, cardio: 8, hiit: 10 };
+
+interface ExerciseLike {
+  exerciseType?: string;
+}
+
+/**
+ * Estimates calories burned: MET x weight(kg) x duration(h). MET is the average
+ * across the workout's exercise types (defaults to a moderate 6).
+ */
+const estimateCalories = (
+  durationMinutes: number,
+  weightKg: number,
+  exercises: ExerciseLike[] | undefined
+): number => {
+  let met = 6;
+  if (exercises && exercises.length > 0) {
+    const mets = exercises.map((e) => MET_BY_TYPE[e.exerciseType ?? 'muscu'] ?? 6);
+    met = mets.reduce((a, b) => a + b, 0) / mets.length;
+  }
+  return Math.round(met * weightKg * (durationMinutes / 60));
+};
+
 export const workoutRoutes = (fastify: FastifyInstance) => {
   // Get user's workouts
   fastify.get(
@@ -90,11 +114,22 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
 
       const data = validation.data;
 
+      // Estimate calories burned when the client doesn't provide a value.
+      let caloriesBurned = data.caloriesBurned ?? null;
+      if (caloriesBurned == null) {
+        const profileRes = await query<{ current_weight: number | null }>(
+          'SELECT current_weight FROM profiles WHERE user_id = $1',
+          [userId]
+        );
+        const weight = Number(profileRes.rows[0]?.current_weight) || 70;
+        caloriesBurned = estimateCalories(data.durationMinutes, weight, data.exercises);
+      }
+
       const result = await query<WorkoutRow>(
         `INSERT INTO workouts (user_id, type, duration_minutes, calories_burned, notes, ai_guided)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
-        [userId, data.type, data.durationMinutes, data.caloriesBurned ?? null, data.notes ?? null, data.aiGuided ?? false]
+        [userId, data.type, data.durationMinutes, caloriesBurned, data.notes ?? null, data.aiGuided ?? false]
       );
 
       const workout = result.rows[0];
@@ -261,16 +296,20 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
       const userId = request.user?.sub;
       if (!userId) return reply.status(401).send({ error: 'Unauthorized' });
 
-      const result = await query<{ count: string; total_minutes: string }>(
-        `SELECT COUNT(*) as count, COALESCE(SUM(duration_minutes), 0) as total_minutes
+      const result = await query<{ count: string; total_minutes: string; total_calories: string }>(
+        `SELECT COUNT(*) as count,
+                COALESCE(SUM(duration_minutes), 0) as total_minutes,
+                COALESCE(SUM(calories_burned), 0) as total_calories
          FROM workouts
          WHERE user_id = $1 AND logged_at >= NOW() - INTERVAL '7 days'`,
         [userId]
       );
 
+      const row = result.rows[0];
       return await reply.send({
-        workoutsThisWeek: parseInt(result.rows[0]?.count ?? '0'),
-        totalMinutes: parseInt(result.rows[0]?.total_minutes ?? '0'),
+        totalWorkouts: parseInt(row?.count ?? '0'),
+        totalDuration: parseInt(row?.total_minutes ?? '0'),
+        totalCalories: parseInt(row?.total_calories ?? '0'),
       });
     }
   );

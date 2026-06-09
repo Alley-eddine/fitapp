@@ -11,8 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useTheme } from '../../src/hooks/useTheme';
-import { profileApi } from '../../src/lib/api';
+import { profileApi, paymentApi } from '../../src/lib/api';
 import { spacing, borderRadius, fontSize } from '../../src/constants/theme';
 
 interface Tier {
@@ -28,8 +29,8 @@ const TIERS: Tier[] = [
   {
     id: 'free',
     name: 'Free',
-    price: '$0',
-    period: 'forever',
+    price: '0 €',
+    period: 'pour toujours',
     features: [
       'Basic workout tracking',
       '3 workouts per week',
@@ -40,8 +41,8 @@ const TIERS: Tier[] = [
   {
     id: 'pro',
     name: 'Pro',
-    price: '$9.99',
-    period: '/month',
+    price: '9,99 €',
+    period: '/mois',
     recommended: true,
     features: [
       'Unlimited workouts',
@@ -54,8 +55,8 @@ const TIERS: Tier[] = [
   {
     id: 'premium',
     name: 'Premium',
-    price: '$19.99',
-    period: '/month',
+    price: '19,99 €',
+    period: '/mois',
     features: [
       'Everything in Pro',
       'Unlimited AI recipes',
@@ -77,18 +78,27 @@ export default function PaywallScreen() {
       // Mark onboarding as complete
       await profileApi.update({ onboardingCompleted: true });
 
-      // For now, just continue (Stripe not implemented)
-      if (selectedTier !== 'free') {
-        Alert.alert(
-          'Coming Soon',
-          'Premium subscriptions are not yet available. Continuing with Free plan.',
-          [{ text: 'OK', onPress: () => { router.replace('/(onboarding)/app-tour' as never); } }]
-        );
-      } else {
+      if (selectedTier === 'free') {
         router.replace('/(onboarding)/app-tour' as never);
+        return;
       }
-    } catch {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+
+      // Paid tier: create a Stripe Checkout session and open it.
+      const { url } = await paymentApi.createCheckout(selectedTier);
+      await WebBrowser.openBrowserAsync(url);
+
+      // Back from Checkout: reconcile the subscription directly with Stripe so
+      // the upgrade (and invoice email) is applied immediately, without relying
+      // on the webhook being delivered.
+      try {
+        await paymentApi.sync();
+      } catch {
+        // Non-blocking: the webhook will reconcile later if sync fails.
+      }
+      router.replace('/(onboarding)/app-tour' as never);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      Alert.alert('Paiement indisponible', message);
     } finally {
       setLoading(false);
     }

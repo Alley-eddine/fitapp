@@ -30,6 +30,13 @@ const envSchema = z.object({
   APPLE_CALLBACK_URL: z.string().url().optional(),
 
   FRONTEND_URL: z.string().url().default('http://localhost:8081'),
+
+  // Public base URL of this auth service (used to build email verification links)
+  AUTH_PUBLIC_URL: z.string().url().default('http://localhost:3001'),
+
+  // Notifications service (mail / sms)
+  NOTIFICATIONS_SERVICE_URL: z.string().url().default('http://localhost:3004'),
+  INTERNAL_API_KEY: z.string().min(16),
 });
 
 const parsed = envSchema.safeParse(process.env);

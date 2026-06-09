@@ -1,6 +1,7 @@
 import { useAuthStore } from '../store/auth';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3002';
+const PAYMENT_URL = process.env.EXPO_PUBLIC_PAYMENT_URL || 'http://localhost:3005';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -70,6 +71,7 @@ class ApiClient {
 }
 
 export const api = new ApiClient(API_URL);
+export const paymentClient = new ApiClient(PAYMENT_URL);
 
 export interface Profile {
   id: string;
@@ -194,7 +196,7 @@ export const workoutApi = {
   update: (id: string, data: CreateWorkoutInput) => api.put<Workout>(`/api/workouts/${id}`, data),
   get: (id: string) => api.get<Workout>(`/api/workouts/${id}`),
   delete: (id: string) => api.delete(`/api/workouts/${id}`),
-  weeklyStats: () => api.get<{ workoutsThisWeek: number; totalMinutes: number }>('/api/workouts/stats/weekly'),
+  weeklyStats: () => api.get<{ totalWorkouts: number; totalDuration: number; totalCalories: number }>('/api/workouts/stats/weekly'),
 };
 
 export const weightApi = {
@@ -315,6 +317,71 @@ export const recipeApi = {
   get: (id: string) => api.get<Recipe>(`/api/recipes/${id}`),
   save: (data: SaveRecipeInput) => api.post<Recipe>('/api/recipes', data),
   delete: (id: string) => api.delete(`/api/recipes/${id}`),
+};
+
+// Payment / subscriptions
+export interface Plan {
+  tier: 'pro' | 'premium';
+  name: string;
+  price: string;
+  amount: number;
+  currency: string;
+  interval: string;
+}
+
+export const paymentApi = {
+  getPlans: () => paymentClient.get<{ plans: Plan[] }>('/api/payment/plans'),
+  createCheckout: (tier: 'pro' | 'premium') =>
+    paymentClient.post<{ url: string; sessionId: string }>('/api/payment/checkout', { tier }),
+  openPortal: () => paymentClient.post<{ url: string }>('/api/payment/portal', {}),
+  sync: () =>
+    paymentClient.post<{ subscription: 'free' | 'pro' | 'premium'; synced: boolean }>(
+      '/api/payment/sync',
+      {}
+    ),
+};
+
+// Exercise catalog (served by the API from an open-source dataset)
+export interface MuscleGroup {
+  key: string;
+  label: string;
+}
+
+export interface CatalogExercise {
+  id: string;
+  name: string;
+  primaryMuscles: string[];
+  equipment: string | null;
+  category: string | null;
+  level: string | null;
+}
+
+export const exerciseApi = {
+  groups: () => api.get<{ groups: MuscleGroup[] }>('/api/exercises/groups'),
+  list: (group?: string, search?: string) => {
+    const params = new URLSearchParams();
+    if (group) params.set('group', group);
+    if (search) params.set('search', search);
+    const qs = params.toString();
+    return api.get<{ items: CatalogExercise[]; total: number }>(
+      `/api/exercises${qs ? `?${qs}` : ''}`
+    );
+  },
+};
+
+// Notification history (delivery log for the current user)
+export interface NotificationLog {
+  id: string;
+  channel: 'email' | 'sms' | 'push';
+  recipient: string;
+  template: string | null;
+  subject: string | null;
+  status: 'sent' | 'failed' | 'simulated';
+  createdAt: string;
+}
+
+export const notificationApi = {
+  history: () => api.get<{ items: NotificationLog[] }>('/api/notifications'),
 };
 
 export const nutritionApi = {
