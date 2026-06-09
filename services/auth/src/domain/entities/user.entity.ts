@@ -1,10 +1,11 @@
-import type { SubscriptionTier, OAuthProvider } from '@fitapp/shared';
+import type { SubscriptionTier, OAuthProvider, UserRole } from '@fitapp/shared';
 
 export interface UserEntity {
   id: string;
   email: string;
   emailVerified: boolean;
   phone: string | null;
+  role: UserRole;
   name: string | null;
   avatarUrl: string | null;
   passwordHash: string | null;

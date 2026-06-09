@@ -19,6 +19,7 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     email_verified BOOLEAN DEFAULT FALSE,
     phone VARCHAR(30),
+    role VARCHAR(20) NOT NULL DEFAULT 'user',
     name VARCHAR(255),
     avatar_url VARCHAR(500),
     password_hash VARCHAR(255),
@@ -31,6 +32,16 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(provider, provider_id)
+);
+
+-- Coach ↔ student link (a coach has N students; a student has 0..1 coach)
+CREATE TABLE coach_students (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    coach_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (coach_id, student_id)
 );
 
 -- User profiles (fitness info)
@@ -182,6 +193,8 @@ CREATE INDEX idx_ai_generations_user_date ON ai_generations(user_id, created_at 
 CREATE INDEX idx_notification_logs_created ON notification_logs(created_at DESC);
 CREATE INDEX idx_email_verification_user ON email_verification_tokens(user_id);
 CREATE INDEX idx_password_reset_user ON password_reset_codes(user_id);
+CREATE INDEX idx_coach_students_coach ON coach_students(coach_id);
+CREATE INDEX idx_coach_students_student ON coach_students(student_id);
 
 -- Function to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()

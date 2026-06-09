@@ -1,4 +1,4 @@
-import type { OAuthProvider } from '@fitapp/shared';
+import type { OAuthProvider, UserRole } from '@fitapp/shared';
 import type { IUserRepository } from '../../domain/interfaces/user.repository.js';
 import type { UserEntity, CreateUserData, CreateUserWithPasswordData } from '../../domain/entities/user.entity.js';
 import { query } from '../config/database.js';
@@ -8,6 +8,7 @@ interface UserRow {
   email: string;
   email_verified: boolean;
   phone: string | null;
+  role: UserRole;
   name: string | null;
   avatar_url: string | null;
   password_hash: string | null;
@@ -26,6 +27,7 @@ const mapRowToEntity = (row: UserRow): UserEntity => ({
   email: row.email,
   emailVerified: row.email_verified,
   phone: row.phone,
+  role: row.role,
   name: row.name,
   avatarUrl: row.avatar_url,
   passwordHash: row.password_hash,
