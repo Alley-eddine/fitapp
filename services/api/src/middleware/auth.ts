@@ -2,10 +2,13 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import * as jose from 'jose';
 import { env } from '../config/env.js';
 
+type UserRole = 'coach' | 'student' | 'user';
+
 interface TokenPayload {
   sub: string;
   email: string;
   subscription: 'free' | 'pro' | 'premium';
+  role: UserRole;
 }
 
 declare module 'fastify' {
@@ -35,8 +38,21 @@ export const authMiddleware = async (request: FastifyRequest, reply: FastifyRepl
       sub: payload.sub as string,
       email: payload.email as string,
       subscription: payload.subscription as TokenPayload['subscription'],
+      role: (payload.role as UserRole) ?? 'user',
     };
   } catch {
     return reply.status(401).send({ error: 'Invalid or expired token' });
   }
 };
+
+/**
+ * RBAC guard factory. Use as a preHandler after authMiddleware to restrict a
+ * route to one or more roles, e.g. `preHandler: [authMiddleware, requireRole('coach')]`.
+ */
+export const requireRole =
+  (...roles: UserRole[]) =>
+  async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.user || !roles.includes(request.user.role)) {
+      return reply.status(403).send({ error: 'Forbidden: insufficient role' });
+    }
+  };
