@@ -56,3 +56,32 @@ export interface CoachStudent {
 export const coachApi = {
   students: () => request<{ students: CoachStudent[] }>(API_URL, "/api/coach/students", { auth: true }),
 };
+
+export interface WorkoutExercise {
+  name: string;
+  exerciseType?: "muscu" | "cardio" | "hiit";
+  sets?: number;
+  reps?: number;
+  weightKg?: number;
+}
+
+export interface Workout {
+  id: string;
+  type: string;
+  durationMinutes: number;
+  caloriesBurned: number | null;
+  loggedAt: string;
+  exercises: WorkoutExercise[];
+}
+
+export interface CreateWorkoutInput {
+  type: string;
+  durationMinutes?: number;
+  exercises: WorkoutExercise[];
+}
+
+export const workoutApi = {
+  list: () => request<{ items: Workout[]; total: number }>(API_URL, "/api/workouts?limit=20", { auth: true }),
+  create: (data: CreateWorkoutInput) =>
+    request<Workout>(API_URL, "/api/workouts", { method: "POST", body: data, auth: true }),
+};
