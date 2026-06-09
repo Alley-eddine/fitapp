@@ -21,12 +21,14 @@ const config: KnipConfig = {
     '@babel/core',
     'expo-auth-session',
     'expo-crypto',
-    'expo-web-browser',
     'react-native-svg',
     'react-native-web',
     'expo-updates',
     'expo-system-ui',
     'husky',
+    // Expo web runtime — pulled in by Expo's web build, not imported in our code
+    'metro-runtime',
+    '@expo/metro-runtime',
   ],
   ignore: [
     '**/__tests__/**',
