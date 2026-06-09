@@ -10,11 +10,15 @@ CREATE TYPE workout_type AS ENUM ('weights', 'cardio', 'hiit', 'running', 'yoga'
 CREATE TYPE activity_level AS ENUM ('sedentary', 'light', 'moderate', 'active', 'very_active');
 CREATE TYPE fitness_goal AS ENUM ('lose_weight', 'gain_muscle', 'maintain', 'improve_endurance');
 CREATE TYPE gender AS ENUM ('male', 'female');
+CREATE TYPE notification_channel AS ENUM ('email', 'sms', 'push');
+CREATE TYPE notification_status AS ENUM ('sent', 'failed', 'simulated');
 
 -- Users
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
+    email_verified BOOLEAN DEFAULT FALSE,
+    phone VARCHAR(30),
     name VARCHAR(255),
     avatar_url VARCHAR(500),
     password_hash VARCHAR(255),
@@ -53,15 +57,14 @@ CREATE TABLE weight_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     weight DECIMAL(5,2) NOT NULL,
-    logged_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(user_id, logged_at::DATE)
+    logged_at TIMESTAMP DEFAULT NOW()
 );
 
--- Workouts
+-- Workouts (type holds a free-text session name, e.g. "Dos / Biceps")
 CREATE TABLE workouts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    type workout_type NOT NULL,
+    type VARCHAR(100) NOT NULL,
     duration_minutes INTEGER NOT NULL,
     calories_burned INTEGER,
     notes TEXT,
@@ -74,10 +77,14 @@ CREATE TABLE workout_exercises (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workout_id UUID REFERENCES workouts(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
+    exercise_type VARCHAR(20) DEFAULT 'muscu',
     sets INTEGER,
     reps INTEGER,
     weight_kg DECIMAL(5,2),
     duration_seconds INTEGER,
+    work_seconds INTEGER,
+    rest_seconds INTEGER,
+    rounds INTEGER,
     order_index INTEGER NOT NULL
 );
 
@@ -132,14 +139,49 @@ CREATE TABLE ai_generations (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Email verification tokens (one-time, expiring)
+CREATE TABLE email_verification_tokens (
+    token VARCHAR(255) PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Password reset codes sent by SMS (6 digits, one-time, expiring)
+CREATE TABLE password_reset_codes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    code VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Notification delivery logs (email / sms / push tracking & reporting)
+CREATE TABLE notification_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    channel notification_channel NOT NULL,
+    recipient VARCHAR(255) NOT NULL,
+    template VARCHAR(100),
+    subject VARCHAR(255),
+    status notification_status NOT NULL,
+    provider_id VARCHAR(255),
+    error TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_provider ON users(provider, provider_id);
 CREATE INDEX idx_weight_logs_user_date ON weight_logs(user_id, logged_at DESC);
+CREATE UNIQUE INDEX idx_weight_logs_user_day ON weight_logs(user_id, (logged_at::date));
 CREATE INDEX idx_workouts_user_date ON workouts(user_id, logged_at DESC);
 CREATE INDEX idx_steps_logs_user_date ON steps_logs(user_id, logged_at DESC);
 CREATE INDEX idx_recipes_user ON recipes(user_id);
 CREATE INDEX idx_ai_generations_user_date ON ai_generations(user_id, created_at DESC);
+CREATE INDEX idx_notification_logs_created ON notification_logs(created_at DESC);
+CREATE INDEX idx_email_verification_user ON email_verification_tokens(user_id);
+CREATE INDEX idx_password_reset_user ON password_reset_codes(user_id);
 
 -- Function to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()

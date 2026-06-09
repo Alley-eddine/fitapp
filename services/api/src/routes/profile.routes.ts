@@ -19,6 +19,45 @@ interface ProfileRow {
   onboarding_completed: boolean;
 }
 
+const ACTIVITY_FACTORS: Record<string, number> = {
+  sedentary: 1.2,
+  light: 1.375,
+  moderate: 1.55,
+  active: 1.725,
+  very_active: 1.9,
+};
+
+const GOAL_ADJUSTMENTS: Record<string, number> = {
+  lose_weight: -500,
+  gain_muscle: 300,
+  maintain: 0,
+  improve_endurance: 200,
+};
+
+/**
+ * Daily calorie target via Mifflin-St Jeor BMR x activity factor + goal
+ * adjustment. Returns null when the required inputs are missing.
+ */
+const computeDailyCalories = (row: ProfileRow): number | null => {
+  if (row.current_weight == null || row.height == null || !row.birth_date || !row.gender) {
+    return null;
+  }
+  const birth = new Date(row.birth_date);
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+  if (age <= 0 || age > 120) return null;
+
+  const weight = Number(row.current_weight);
+  const height = Number(row.height);
+  const bmr =
+    10 * weight + 6.25 * height - 5 * age + (row.gender === 'male' ? 5 : -161);
+  const tdee = bmr * (ACTIVITY_FACTORS[row.activity_level] ?? 1.55);
+  const target = tdee + (GOAL_ADJUSTMENTS[row.goal] ?? 0);
+  return Math.round(target);
+};
+
 export const profileRoutes = (fastify: FastifyInstance) => {
   // Get current user's profile
   fastify.get(
@@ -94,7 +133,22 @@ export const profileRoutes = (fastify: FastifyInstance) => {
         ]
       );
 
-      return await reply.send(mapProfile(result.rows[0]));
+      let profile = result.rows[0];
+
+      // Recompute the daily calorie target from the merged profile values.
+      if (profile) {
+        const calories = computeDailyCalories(profile);
+        if (calories !== null && calories !== profile.daily_calorie_target) {
+          const updated = await query<ProfileRow>(
+            `UPDATE profiles SET daily_calorie_target = $2, updated_at = NOW()
+             WHERE user_id = $1 RETURNING *`,
+            [userId, calories]
+          );
+          profile = updated.rows[0] ?? profile;
+        }
+      }
+
+      return await reply.send(mapProfile(profile));
     }
   );
 };

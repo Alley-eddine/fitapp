@@ -9,14 +9,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '../../src/hooks/useTheme';
 import { spacing, borderRadius, fontSize } from '../../src/constants/theme';
-import { workoutApi } from '../../src/lib/api';
-import type { Exercise, ExerciseType } from '../../src/lib/api';
+import { workoutApi, exerciseApi } from '../../src/lib/api';
+import type { Exercise, ExerciseType, MuscleGroup, CatalogExercise } from '../../src/lib/api';
 import { useWorkoutStore } from '../../src/store/workout';
 
 // Types d'exercices avec labels
@@ -131,6 +133,47 @@ export default function NewWorkoutScreen() {
       newExercise.rounds = 8;
     }
     setExercises([...exercises, newExercise]);
+  };
+
+  // --- Exercise library (catalog by muscle group) ----------------------
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [groups, setGroups] = useState<MuscleGroup[]>([]);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const [catalog, setCatalog] = useState<CatalogExercise[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+
+  const openPicker = async () => {
+    setPickerVisible(true);
+    if (groups.length === 0) {
+      try {
+        const { groups: g } = await exerciseApi.groups();
+        setGroups(g);
+        if (g[0]) await selectGroup(g[0].key);
+      } catch {
+        showAlert('Erreur', 'Impossible de charger la bibliothèque');
+      }
+    }
+  };
+
+  const selectGroup = async (key: string) => {
+    setActiveGroup(key);
+    setLoadingCatalog(true);
+    try {
+      const { items } = await exerciseApi.list(key);
+      setCatalog(items);
+    } catch {
+      setCatalog([]);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  };
+
+  const addFromCatalog = (ex: CatalogExercise) => {
+    setExercises((prev) => [
+      ...prev.filter((e) => e.name),
+      { name: ex.name, exerciseType: 'muscu', sets: 3, reps: 10 },
+    ]);
+    setPickerVisible(false);
   };
 
   const updateExercise = (index: number, field: keyof Exercise, value: string | number) => {
@@ -481,13 +524,22 @@ export default function NewWorkoutScreen() {
             </View>
           ))}
 
-          <Pressable
-            style={[styles.addExerciseButton, { borderColor: colors.primary }]}
-            onPress={addExercise}
-          >
-            <Ionicons name="add-circle" size={22} color={colors.primary} />
-            <Text style={[styles.addExerciseText, { color: colors.primary }]}>Add Exercise</Text>
-          </Pressable>
+          <View style={styles.addRow}>
+            <Pressable
+              style={[styles.addExerciseButton, styles.addRowItem, { borderColor: colors.primary }]}
+              onPress={() => { addExercise(); }}
+            >
+              <Ionicons name="add-circle" size={20} color={colors.primary} />
+              <Text style={[styles.addExerciseText, { color: colors.primary }]}>Manuel</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.addRowItem, styles.libraryButton, { backgroundColor: colors.primary }]}
+              onPress={() => { void openPicker(); }}
+            >
+              <Ionicons name="library" size={20} color="#fff" />
+              <Text style={styles.libraryButtonText}>Bibliothèque</Text>
+            </Pressable>
+          </View>
 
           {/* Personal Notes */}
           <Text style={[styles.label, { color: colors.text, marginTop: spacing.lg }]}>Personal Notes</Text>
@@ -524,6 +576,72 @@ export default function NewWorkoutScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Exercise library picker */}
+      <Modal
+        visible={pickerVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => { setPickerVisible(false); }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Bibliothèque d&apos;exercices</Text>
+              <Pressable onPress={() => { setPickerVisible(false); }}>
+                <Ionicons name="close" size={26} color={colors.text} />
+              </Pressable>
+            </View>
+
+            {/* Muscle group chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupsRow} contentContainerStyle={styles.groupsContent}>
+              {groups.map((g) => (
+                <Pressable
+                  key={g.key}
+                  style={[
+                    styles.groupChip,
+                    { borderColor: colors.border, backgroundColor: colors.surface },
+                    activeGroup === g.key && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
+                  onPress={() => { void selectGroup(g.key); }}
+                >
+                  <Text style={[styles.groupChipText, { color: activeGroup === g.key ? '#fff' : colors.text }]}>
+                    {g.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {/* Exercise list */}
+            {loadingCatalog ? (
+              <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+            ) : (
+              <ScrollView style={styles.catalogList} showsVerticalScrollIndicator={false}>
+                {catalog.map((ex) => (
+                  <Pressable
+                    key={ex.id}
+                    style={[styles.catalogItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => { addFromCatalog(ex); }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.catalogName, { color: colors.text }]}>{ex.name}</Text>
+                      <Text style={[styles.catalogMeta, { color: colors.textSecondary }]}>
+                        {[ex.equipment, ex.level].filter(Boolean).join(' · ') || '—'}
+                      </Text>
+                    </View>
+                    <Ionicons name="add-circle" size={24} color={colors.primary} />
+                  </Pressable>
+                ))}
+                {catalog.length === 0 && (
+                  <Text style={[styles.catalogMeta, { color: colors.textSecondary, textAlign: 'center', marginTop: spacing.lg }]}>
+                    Aucun exercice
+                  </Text>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -659,6 +777,13 @@ const styles = StyleSheet.create({
   detailInput: { fontSize: fontSize.md, fontWeight: '500', minWidth: 24, textAlign: 'center' },
   detailLabel: { fontSize: fontSize.sm },
   detailDot: { fontSize: fontSize.sm },
+  addRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  addRowItem: {
+    flex: 1,
+  },
   addExerciseButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -670,6 +795,54 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   addExerciseText: { fontSize: fontSize.md, fontWeight: '500' },
+  libraryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+  },
+  libraryButtonText: { color: '#fff', fontSize: fontSize.md, fontWeight: '600' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    height: '80%',
+    borderTopLeftRadius: borderRadius.lg,
+    borderTopRightRadius: borderRadius.lg,
+    padding: spacing.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: { fontSize: fontSize.lg, fontWeight: '700' },
+  groupsRow: { flexGrow: 0, marginBottom: spacing.md },
+  groupsContent: { gap: spacing.sm, paddingRight: spacing.lg },
+  groupChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+  },
+  groupChipText: { fontSize: fontSize.sm, fontWeight: '600' },
+  catalogList: { flex: 1 },
+  catalogItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  catalogName: { fontSize: fontSize.md, fontWeight: '600' },
+  catalogMeta: { fontSize: fontSize.sm, marginTop: 2, textTransform: 'capitalize' },
   notesInput: {
     padding: spacing.md,
     borderRadius: borderRadius.lg,

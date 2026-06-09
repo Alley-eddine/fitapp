@@ -3,6 +3,8 @@ import type { SubscriptionTier, OAuthProvider } from '@fitapp/shared';
 export interface UserEntity {
   id: string;
   email: string;
+  emailVerified: boolean;
+  phone: string | null;
   name: string | null;
   avatarUrl: string | null;
   passwordHash: string | null;
@@ -28,4 +30,5 @@ export interface CreateUserWithPasswordData {
   email: string;
   name: string;
   passwordHash: string;
+  phone?: string | null;
 }

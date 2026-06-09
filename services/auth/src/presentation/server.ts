@@ -14,9 +14,9 @@ export const createServer = async () => {
     logger: env.NODE_ENV !== 'test',
   });
 
-  // CORS
+  // CORS - allow all origins in development (Expo web can run on any port)
   await fastify.register(cors, {
-    origin: env.FRONTEND_URL,
+    origin: env.NODE_ENV === 'production' ? env.FRONTEND_URL : true,
     credentials: true,
   });
 
@@ -32,8 +32,8 @@ export const createServer = async () => {
 
   // Prometheus metrics endpoint
   fastify.get('/metrics', async (_request, reply) => {
-    await reply.header('Content-Type', register.contentType);
-    return register.metrics();
+    const metrics = await register.metrics();
+    await reply.header('Content-Type', register.contentType).send(metrics);
   });
 
   return fastify;
