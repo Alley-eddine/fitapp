@@ -2,3 +2,6 @@ packages:
   - 'packages/*'
   - 'services/*'
   - 'apps/*'
+  # Legacy Expo app — replaced by the Next.js PWA (apps/web). Kept as reference,
+  # excluded from the workspace to avoid the React 18 / 19 conflict.
+  - '!apps/mobile'

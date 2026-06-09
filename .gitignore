@@ -37,6 +37,10 @@ coverage/
 *.tsbuildinfo
 .expo/
 
+# Next.js
+.next/
+next-env.d.ts
+
 # Generated config artifacts (from tsc on knip.config.ts)
 knip.config.js
 knip.config.d.ts

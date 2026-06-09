@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
-    "dev:mobile": "pnpm --filter @fitapp/mobile start",
-    "dev:web": "pnpm --filter @fitapp/mobile web",
+    "dev:web": "pnpm --filter @fitapp/web dev",
     "dev:auth": "pnpm --filter @fitapp/auth dev",
     "dev:api": "pnpm --filter @fitapp/api dev",
     "dev:ai": "pnpm --filter @fitapp/ai dev",
@@ -31,9 +30,6 @@
     "prettier": "^3.4.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.54.0"
-  },
-  "dependencies": {
-    "metro-runtime": "^0.83.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild"]
