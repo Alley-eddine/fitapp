@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getAuth, logout, type AuthUser } from "@/lib/auth";
 import { coachApi, type CoachStudent } from "@/lib/api";
 import { Button, Card, RoleBadge } from "@/components/ui";
@@ -59,6 +60,13 @@ export default function DashboardPage() {
           <p className="mt-1 text-xl font-semibold">{user.email}</p>
         </Card>
       </div>
+
+      <Link href="/workouts" className="mt-4 block">
+        <Card className="flex items-center justify-between transition hover:border-cyan-400/60">
+          <span className="font-semibold">🏋️ Mes séances</span>
+          <span className="text-cyan-300">→</span>
+        </Card>
+      </Link>
 
       {user.role === "coach" && (
         <Card className="mt-4">
