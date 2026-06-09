@@ -34,5 +34,8 @@
   },
   "dependencies": {
     "metro-runtime": "^0.83.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   }
 }
