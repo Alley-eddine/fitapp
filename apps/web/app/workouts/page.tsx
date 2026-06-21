@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExerciseLibraryDialog } from "@/components/exercise-library-dialog";
 
 interface ExerciseRow {
   name: string;
@@ -52,6 +53,16 @@ export default function WorkoutsPage() {
 
   function updateExercise(i: number, field: keyof ExerciseRow, value: string) {
     setExercises((prev) => prev.map((ex, idx) => (idx === i ? { ...ex, [field]: value } : ex)));
+  }
+
+  function addFromLibrary(name: string) {
+    setExercises((prev) => {
+      const emptyIdx = prev.findIndex((ex) => !ex.name.trim());
+      if (emptyIdx >= 0) {
+        return prev.map((ex, idx) => (idx === emptyIdx ? { ...ex, name } : ex));
+      }
+      return [...prev, { ...emptyExercise(), name }];
+    });
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -145,16 +156,19 @@ export default function WorkoutsPage() {
               </div>
             ))}
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="self-start text-primary"
-              onClick={() => setExercises((p) => [...p, emptyExercise()])}
-            >
-              <Plus className="size-4" />
-              Ajouter un exercice
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-primary"
+                onClick={() => setExercises((p) => [...p, emptyExercise()])}
+              >
+                <Plus className="size-4" />
+                Ajouter un exercice
+              </Button>
+              <ExerciseLibraryDialog onPick={addFromLibrary} />
+            </div>
 
             <Button type="submit" disabled={saving} className="self-start">
               {saving ? "Enregistrement…" : "Enregistrer la séance"}
