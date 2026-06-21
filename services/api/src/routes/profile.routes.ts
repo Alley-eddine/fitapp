@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { updateProfileSchema } from '@fitapp/shared';
 import { query } from '../config/database.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { sendEmail, emailHtml } from '../notifications.client.js';
 
 export interface ProfileRow {
   id: string;
@@ -146,6 +147,19 @@ export const profileRoutes = (fastify: FastifyInstance) => {
           );
           profile = updated.rows[0] ?? profile;
         }
+      }
+
+      // Welcome email when the user just completed onboarding (best-effort).
+      if (data.onboardingCompleted === true && request.user?.email) {
+        void sendEmail({
+          to: request.user.email,
+          subject: 'Bienvenue sur FitCoach AI 💪',
+          html: emailHtml(
+            'Bienvenue sur FitCoach AI 💪',
+            'Ton compte est prêt. Crée ta première séance, suis ton poids et tes calories, et laisse le coach IA t’aider côté nutrition.'
+          ),
+          text: 'Bienvenue sur FitCoach AI ! Ton compte est prêt.',
+        });
       }
 
       return await reply.send(mapProfile(profile));

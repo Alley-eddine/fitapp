@@ -303,6 +303,11 @@ export interface NotificationLog {
 
 export const notificationsApi = {
   history: () => request<{ items: NotificationLog[] }>(API_URL, "/api/notifications", { auth: true }),
+  sendTest: () =>
+    request<{ email: boolean; sms: boolean; hasPhone: boolean }>(API_URL, "/api/notifications/test", {
+      method: "POST",
+      auth: true,
+    }),
 };
 
 export const paymentApi = {
