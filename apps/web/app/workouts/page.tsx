@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Play } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import { workoutApi, type Workout } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExerciseLibraryDialog } from "@/components/exercise-library-dialog";
+import { SessionPlayer, type SessionExercise } from "@/components/session-player";
 
 interface ExerciseRow {
   name: string;
@@ -31,6 +32,7 @@ export default function WorkoutsPage() {
   const [duration, setDuration] = useState("45");
   const [exercises, setExercises] = useState<ExerciseRow[]>([emptyExercise()]);
   const [saving, setSaving] = useState(false);
+  const [session, setSession] = useState<SessionExercise[] | null>(null);
 
   function refresh() {
     workoutApi
@@ -93,6 +95,56 @@ export default function WorkoutsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function startSession() {
+    const list: SessionExercise[] = exercises
+      .filter((ex) => ex.name.trim())
+      .map((ex) => ({
+        name: ex.name.trim(),
+        sets: Number(ex.sets) || 3,
+        reps: Number(ex.reps) || undefined,
+        weightKg: ex.weightKg ? Number(ex.weightKg) : undefined,
+      }));
+    if (list.length === 0) {
+      toast.error("Ajoute au moins un exercice pour démarrer.");
+      return;
+    }
+    setSession(list);
+  }
+
+  async function handleFinishSession(elapsedSeconds: number) {
+    const cleaned = (session ?? []).map((ex) => ({
+      name: ex.name,
+      exerciseType: "muscu" as const,
+      sets: ex.sets,
+      reps: ex.reps,
+      weightKg: ex.weightKg,
+    }));
+    setSession(null);
+    try {
+      await workoutApi.create({
+        type: name.trim() || "Séance",
+        durationMinutes: Math.max(1, Math.round(elapsedSeconds / 60)),
+        exercises: cleaned,
+      });
+      toast.success("Séance terminée et enregistrée 💪");
+      setName("");
+      setExercises([emptyExercise()]);
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Échec de l'enregistrement");
+    }
+  }
+
+  if (session) {
+    return (
+      <SessionPlayer
+        exercises={session}
+        onFinish={handleFinishSession}
+        onQuit={() => setSession(null)}
+      />
+    );
   }
 
   return (
@@ -170,9 +222,15 @@ export default function WorkoutsPage() {
               <ExerciseLibraryDialog onPick={addFromLibrary} />
             </div>
 
-            <Button type="submit" disabled={saving} className="self-start">
-              {saving ? "Enregistrement…" : "Enregistrer la séance"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={startSession} className="grow sm:grow-0">
+                <Play className="size-4" />
+                Démarrer la séance
+              </Button>
+              <Button type="submit" variant="outline" disabled={saving}>
+                {saving ? "Enregistrement…" : "Enregistrer sans démarrer"}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
