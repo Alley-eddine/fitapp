@@ -16,6 +16,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Bell,
 } from "lucide-react";
 import { getAuth, logout, type AuthUser } from "@/lib/auth";
 import {
@@ -31,7 +32,7 @@ import {
   type Workout,
   type WeeklyStats,
 } from "@/lib/api";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RoleBadge } from "@/components/role-badge";
@@ -122,9 +123,18 @@ export default function DashboardPage() {
             <RoleBadge role={user.role} />
           </h1>
         </div>
-        <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Déconnexion">
-          <LogOut className="size-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Link
+            href="/notifications"
+            aria-label="Notifications"
+            className={buttonVariants({ variant: "ghost", size: "icon" })}
+          >
+            <Bell className="size-4" />
+          </Link>
+          <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Déconnexion">
+            <LogOut className="size-4" />
+          </Button>
+        </div>
       </header>
 
       {/* Today hero */}
