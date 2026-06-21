@@ -7,6 +7,8 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
   auth?: boolean;
+  /** Explicit bearer token, used instead of the stored one (e.g. during OAuth callback). */
+  token?: string;
 }
 
 async function request<T>(base: string, path: string, opts: RequestOptions = {}): Promise<T> {
@@ -14,7 +16,7 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
   const headers: Record<string, string> = {};
   if (body) headers["Content-Type"] = "application/json";
   if (auth) {
-    const token = getToken();
+    const token = opts.token ?? getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
@@ -37,12 +39,25 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
+/** Raw shape returned by GET /auth/me (differs from the login payload). */
+export interface MeResponse {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  role: AuthUser["role"];
+  subscription: AuthUser["subscriptionTier"];
+  themePreference: string;
+}
+
 export const authApi = {
   login: (email: string, password: string) =>
     request<AuthResponse>(AUTH_URL, "/auth/login", { method: "POST", body: { email, password } }),
   register: (data: { email: string; password: string; name: string; phone?: string }) =>
     request<AuthResponse>(AUTH_URL, "/auth/register", { method: "POST", body: data }),
-  me: () => request<AuthUser>(AUTH_URL, "/auth/me", { auth: true }),
+  me: (token?: string) => request<MeResponse>(AUTH_URL, "/auth/me", { auth: true, token }),
+  /** URL to start the OAuth flow on the auth service (server-driven redirect). */
+  oauthUrl: (provider: "google") => `${AUTH_URL}/auth/${provider}`,
 };
 
 export interface CoachStudent {
