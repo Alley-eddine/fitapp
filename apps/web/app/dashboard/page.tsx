@@ -78,6 +78,10 @@ export default function DashboardPage() {
       workoutApi.weeklyStats(),
     ])
       .then(([p, t, w, wk, st]) => {
+        if (p.status === "fulfilled" && !p.value.onboardingCompleted) {
+          router.replace("/onboarding");
+          return;
+        }
         if (p.status === "fulfilled") setProfile(p.value);
         if (t.status === "fulfilled") setToday(t.value);
         if (w.status === "fulfilled") setWeights(w.value);
