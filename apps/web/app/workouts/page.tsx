@@ -32,7 +32,7 @@ export default function WorkoutsPage() {
   const [duration, setDuration] = useState("45");
   const [exercises, setExercises] = useState<ExerciseRow[]>([emptyExercise()]);
   const [saving, setSaving] = useState(false);
-  const [session, setSession] = useState<SessionExercise[] | null>(null);
+  const [session, setSession] = useState<{ name: string; exercises: SessionExercise[] } | null>(null);
 
   function refresh() {
     workoutApi
@@ -110,27 +110,41 @@ export default function WorkoutsPage() {
       toast.error("Ajoute au moins un exercice pour démarrer.");
       return;
     }
-    setSession(list);
+    setSession({ name: name.trim() || "Séance", exercises: list });
+  }
+
+  function startSavedWorkout(w: Workout) {
+    const list: SessionExercise[] = w.exercises.map((ex) => ({
+      name: ex.name,
+      sets: ex.sets ?? 3,
+      reps: ex.reps,
+      weightKg: ex.weightKg,
+    }));
+    if (list.length === 0) {
+      toast.error("Cette séance n'a aucun exercice.");
+      return;
+    }
+    setSession({ name: w.type, exercises: list });
   }
 
   async function handleFinishSession(elapsedSeconds: number) {
-    const cleaned = (session ?? []).map((ex) => ({
+    if (!session) return;
+    const cleaned = session.exercises.map((ex) => ({
       name: ex.name,
       exerciseType: "muscu" as const,
       sets: ex.sets,
       reps: ex.reps,
       weightKg: ex.weightKg,
     }));
+    const sessionName = session.name;
     setSession(null);
     try {
       await workoutApi.create({
-        type: name.trim() || "Séance",
+        type: sessionName,
         durationMinutes: Math.max(1, Math.round(elapsedSeconds / 60)),
         exercises: cleaned,
       });
       toast.success("Séance terminée et enregistrée 💪");
-      setName("");
-      setExercises([emptyExercise()]);
       refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Échec de l'enregistrement");
@@ -140,7 +154,7 @@ export default function WorkoutsPage() {
   if (session) {
     return (
       <SessionPlayer
-        exercises={session}
+        exercises={session.exercises}
         onFinish={handleFinishSession}
         onQuit={() => setSession(null)}
       />
@@ -247,18 +261,28 @@ export default function WorkoutsPage() {
           {workouts.map((w) => (
             <Card key={w.id}>
               <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">{w.type}</h3>
-                  <span className="text-sm text-muted-foreground">
-                    {new Date(w.loggedAt).toLocaleDateString("fr-FR")}
-                  </span>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold">{w.type}</h3>
+                    <p className="mt-1 text-sm text-primary">
+                      {w.durationMinutes} min · {w.caloriesBurned ?? 0} kcal
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {w.exercises.map((e) => e.name).join(", ") || "—"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(w.loggedAt).toLocaleDateString("fr-FR")}
+                    </span>
+                    {w.exercises.length > 0 && (
+                      <Button size="sm" onClick={() => startSavedWorkout(w)}>
+                        <Play className="size-4" />
+                        Démarrer
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <p className="mt-1 text-sm text-primary">
-                  {w.durationMinutes} min · {w.caloriesBurned ?? 0} kcal
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {w.exercises.map((e) => e.name).join(", ") || "—"}
-                </p>
               </CardContent>
             </Card>
           ))}
