@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Dumbbell, Scale, Flame, LogOut, ChevronRight } from "lucide-react";
+import { Dumbbell, Scale, Flame, Footprints, LogOut, ChevronRight } from "lucide-react";
 import { getAuth, logout, type AuthUser } from "@/lib/auth";
 import { coachApi, type CoachStudent } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { RoleBadge } from "@/components/role-badge";
 const TILES = [
   { href: "/workouts", label: "Mes séances", icon: Dumbbell },
   { href: "/weight", label: "Mon poids", icon: Scale },
+  { href: "/steps", label: "Mes pas", icon: Footprints },
   { href: "/profile", label: "Profil & calories", icon: Flame },
 ];
 

@@ -151,6 +151,32 @@ export const profileApi = {
     request<Profile>(API_URL, "/api/profile", { method: "PUT", body: data, auth: true }),
 };
 
+export interface StepEntry {
+  id: string;
+  userId: string;
+  steps: number;
+  goal: number;
+  loggedAt: string;
+}
+
+export interface StepsToday {
+  steps: number;
+  goal: number;
+  percentage: number;
+}
+
+export const stepsApi = {
+  history: (days = 14) =>
+    request<StepEntry[]>(API_URL, `/api/steps?days=${String(days)}`, { auth: true }),
+  today: () => request<StepsToday>(API_URL, "/api/steps/today", { auth: true }),
+  log: (steps: number, goal?: number) =>
+    request<StepEntry>(API_URL, "/api/steps", {
+      method: "POST",
+      body: goal ? { steps, goal } : { steps },
+      auth: true,
+    }),
+};
+
 export interface ExerciseGroup {
   key: string;
   label: string;
