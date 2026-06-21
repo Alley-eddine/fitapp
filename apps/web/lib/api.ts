@@ -150,3 +150,32 @@ export const profileApi = {
   update: (data: ProfileUpdate) =>
     request<Profile>(API_URL, "/api/profile", { method: "PUT", body: data, auth: true }),
 };
+
+export interface ExerciseGroup {
+  key: string;
+  label: string;
+}
+
+export interface CatalogExercise {
+  id: string;
+  name: string;
+  primaryMuscles: string[];
+  equipment: string | null;
+  category: string | null;
+  level: string | null;
+}
+
+export const exercisesApi = {
+  groups: () => request<{ groups: ExerciseGroup[] }>(API_URL, "/api/exercises/groups", { auth: true }),
+  list: (params: { group?: string; search?: string; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params.group) q.set("group", params.group);
+    if (params.search) q.set("search", params.search);
+    q.set("limit", String(params.limit ?? 60));
+    return request<{ items: CatalogExercise[]; total: number }>(
+      API_URL,
+      `/api/exercises?${q.toString()}`,
+      { auth: true }
+    );
+  },
+};
