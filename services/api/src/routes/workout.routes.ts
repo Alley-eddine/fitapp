@@ -30,9 +30,9 @@ interface ExerciseRow {
 }
 
 // Rough MET values per exercise type for a calorie-burn estimate.
-const MET_BY_TYPE: Record<string, number> = { muscu: 5, cardio: 8, hiit: 10 };
+export const MET_BY_TYPE: Record<string, number> = { muscu: 5, cardio: 8, hiit: 10 };
 
-interface ExerciseLike {
+export interface ExerciseLike {
   exerciseType?: string;
 }
 
@@ -40,7 +40,7 @@ interface ExerciseLike {
  * Estimates calories burned: MET x weight(kg) x duration(h). MET is the average
  * across the workout's exercise types (defaults to a moderate 6).
  */
-const estimateCalories = (
+export const estimateCalories = (
   durationMinutes: number,
   weightKg: number,
   exercises: ExerciseLike[] | undefined
