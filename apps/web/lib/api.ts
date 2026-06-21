@@ -95,10 +95,17 @@ export interface CreateWorkoutInput {
   exercises: WorkoutExercise[];
 }
 
+export interface WeeklyStats {
+  totalWorkouts: number;
+  totalDuration: number;
+  totalCalories: number;
+}
+
 export const workoutApi = {
   list: () => request<{ items: Workout[]; total: number }>(API_URL, "/api/workouts?limit=20", { auth: true }),
   create: (data: CreateWorkoutInput) =>
     request<Workout>(API_URL, "/api/workouts", { method: "POST", body: data, auth: true }),
+  weeklyStats: () => request<WeeklyStats>(API_URL, "/api/workouts/stats/weekly", { auth: true }),
 };
 
 export interface WeightEntry {
