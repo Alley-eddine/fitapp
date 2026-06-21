@@ -290,6 +290,20 @@ export interface Plan {
   interval: string;
 }
 
+export interface NotificationLog {
+  id: string;
+  channel: string;
+  recipient: string;
+  template: string | null;
+  subject: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export const notificationsApi = {
+  history: () => request<{ items: NotificationLog[] }>(API_URL, "/api/notifications", { auth: true }),
+};
+
 export const paymentApi = {
   plans: () => request<{ plans: Plan[] }>(PAYMENT_URL, "/api/payment/plans"),
   checkout: (tier: "pro" | "premium") =>
