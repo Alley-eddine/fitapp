@@ -250,11 +250,28 @@ export interface RateLimitInfo {
   resetAt: string;
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface FrigoResponse {
+  message: string;
+  recipe?: GeneratedRecipe;
+  suggestedIngredients?: string[];
+}
+
 export const nutritionApi = {
   generateRecipe: (input: GenerateRecipeInput) =>
     request<{ recipe: GeneratedRecipe }>(API_URL, "/api/nutrition/generate-recipe", {
       method: "POST",
       body: input,
+      auth: true,
+    }),
+  frigoChat: (message: string, conversationHistory: ChatMessage[]) =>
+    request<FrigoResponse>(API_URL, "/api/nutrition/frigo-mode", {
+      method: "POST",
+      body: { message, conversationHistory },
       auth: true,
     }),
   rateLimit: () =>
