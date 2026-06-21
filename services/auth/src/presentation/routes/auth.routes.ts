@@ -52,7 +52,8 @@ export const authRoutes = (fastify: FastifyInstance) => {
       redirectUrl.searchParams.set('isNewUser', String(result.isNewUser));
 
       return await reply.redirect(redirectUrl.toString());
-    } catch {
+    } catch (err) {
+      request.log.error({ err }, 'Google OAuth callback failed');
       const errorUrl = new URL('/auth/error', env.FRONTEND_URL);
       errorUrl.searchParams.set('error', 'authentication_failed');
       return await reply.redirect(errorUrl.toString());
