@@ -37,7 +37,7 @@ export default function LoginPage() {
           : await authApi.register({ email, password, name, phone: phone || undefined });
       setAuth({ token: res.accessToken, user: res.user });
       toast.success(mode === "login" ? "Connecté !" : "Compte créé !");
-      router.push("/dashboard");
+      router.push(mode === "register" ? "/onboarding" : "/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {

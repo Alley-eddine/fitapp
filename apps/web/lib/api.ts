@@ -151,6 +151,7 @@ export interface ProfileUpdate {
   gender?: Gender;
   activityLevel?: ActivityLevel;
   goal?: FitnessGoal;
+  onboardingCompleted?: boolean;
 }
 
 export const profileApi = {
