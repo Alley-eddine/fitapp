@@ -1,40 +1,105 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, X, Sparkles, Clock, Users } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, Clock, Users, ChefHat } from "lucide-react";
 import { getAuth } from "@/lib/auth";
-import { nutritionApi, type GeneratedRecipe } from "@/lib/api";
+import { nutritionApi, type ChatMessage, type GeneratedRecipe } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 
-function Macro({ label, value, unit }: { label: string; value: number; unit: string }) {
+interface Bubble {
+  role: "user" | "assistant";
+  content: string;
+  recipe?: GeneratedRecipe;
+  suggestions?: string[];
+}
+
+const INTRO: Bubble = {
+  role: "assistant",
+  content:
+    "Salut 👨‍🍳 Je suis ton coach Frigo Mode. Dis-moi ce que tu as sous la main (ou ton envie) et je te concocte une recette adaptée à tes objectifs.",
+};
+
+function RecipeCard({ recipe }: { recipe: GeneratedRecipe }) {
   return (
-    <div className="rounded-lg border bg-card px-3 py-2 text-center">
-      <p className="text-lg font-bold text-primary">
-        {value}
-        <span className="text-xs font-normal text-muted-foreground">{unit}</span>
-      </p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
+    <Card className="mt-2 bg-background">
+      <CardContent className="flex flex-col gap-4 py-4">
+        <div>
+          <h3 className="flex items-center gap-2 font-semibold">
+            <ChefHat className="size-4 text-primary" />
+            {recipe.title}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">{recipe.description}</p>
+          <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Clock className="size-3.5" />
+              {recipe.prepTimeMinutes + recipe.cookTimeMinutes} min
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="size-3.5" />
+              {recipe.servings} pers.
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-2 text-center">
+          {[
+            { l: "kcal", v: recipe.calories },
+            { l: "Prot.", v: `${String(recipe.protein)}g` },
+            { l: "Gluc.", v: `${String(recipe.carbs)}g` },
+            { l: "Lip.", v: `${String(recipe.fat)}g` },
+          ].map((m) => (
+            <div key={m.l} className="rounded-lg border py-1.5">
+              <p className="text-sm font-bold text-primary">{m.v}</p>
+              <p className="text-[10px] text-muted-foreground">{m.l}</p>
+            </div>
+          ))}
+        </div>
+
+        <div>
+          <p className="mb-1 text-sm font-semibold">Ingrédients</p>
+          <ul className="flex flex-col gap-0.5 text-sm">
+            {recipe.ingredients.map((ing, i) => (
+              <li key={`${ing.name}-${String(i)}`} className="flex justify-between border-b py-1">
+                <span>{ing.name}</span>
+                <span className="text-muted-foreground">
+                  {ing.quantity} {ing.unit}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <p className="mb-1 text-sm font-semibold">Préparation</p>
+          <ol className="flex flex-col gap-1.5 text-sm">
+            {recipe.instructions.map((step, i) => (
+              <li key={`s-${String(i)}`} className="flex gap-2">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+                  {i + 1}
+                </span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function NutritionPage() {
   const router = useRouter();
-  const [ingredients, setIngredients] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Bubble[]>([INTRO]);
   const [draft, setDraft] = useState("");
-  const [maxCalories, setMaxCalories] = useState("");
-  const [cuisine, setCuisine] = useState("");
-  const [recipe, setRecipe] = useState<GeneratedRecipe | null>(null);
-  const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!getAuth()) {
@@ -43,53 +108,50 @@ export default function NutritionPage() {
     }
     nutritionApi
       .rateLimit()
-      .then((r) => setRemaining(r.recipe.remaining))
+      .then((r) => setRemaining(r.frigo.remaining))
       .catch(() => setRemaining(null));
   }, [router]);
 
-  function addIngredient() {
-    const v = draft.trim();
-    if (!v) return;
-    if (ingredients.includes(v)) {
-      setDraft("");
-      return;
-    }
-    setIngredients((prev) => [...prev, v]);
-    setDraft("");
-  }
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, sending]);
 
-  async function handleGenerate() {
-    if (ingredients.length === 0) {
-      toast.error("Ajoute au moins un ingrédient.");
-      return;
-    }
-    setGenerating(true);
-    setRecipe(null);
+  async function send() {
+    const text = draft.trim();
+    if (!text || sending) return;
+    const history: ChatMessage[] = messages
+      .filter((m) => m !== INTRO)
+      .map((m) => ({ role: m.role, content: m.content }));
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setDraft("");
+    setSending(true);
     try {
-      const maxCal = Number(maxCalories);
-      const res = await nutritionApi.generateRecipe({
-        ingredients,
-        preferences: {
-          ...(Number.isInteger(maxCal) && maxCal > 0 ? { maxCalories: maxCal } : {}),
-          ...(cuisine.trim() ? { cuisineType: cuisine.trim() } : {}),
+      const res = await nutritionApi.frigoChat(text, history);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: res.message,
+          recipe: res.recipe,
+          suggestions: res.suggestedIngredients,
         },
-      });
-      setRecipe(res.recipe);
-      toast.success("Recette générée !");
+      ]);
       nutritionApi
         .rateLimit()
-        .then((r) => setRemaining(r.recipe.remaining))
+        .then((r) => setRemaining(r.frigo.remaining))
         .catch(() => undefined);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Échec de la génération");
+      toast.error(err instanceof Error ? err.message : "L'assistant n'a pas pu répondre");
+      setMessages((prev) => prev.slice(0, -1));
+      setDraft(text);
     } finally {
-      setGenerating(false);
+      setSending(false);
     }
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <header className="mb-8 flex items-end justify-between">
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-5 py-6">
+      <header className="mb-4 flex items-end justify-between">
         <div>
           <Link
             href="/dashboard"
@@ -98,171 +160,78 @@ export default function NutritionPage() {
             <ArrowLeft className="size-4" />
             Tableau de bord
           </Link>
-          <h1 className="mt-1 text-2xl font-bold">Recettes IA</h1>
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">
+            <Sparkles className="size-5 text-primary" />
+            Frigo Mode
+          </h1>
         </div>
         {remaining !== null && (
           <Badge variant="secondary" className="bg-primary/15 text-primary">
-            {remaining} génération{remaining > 1 ? "s" : ""} restante{remaining > 1 ? "s" : ""}
+            {remaining} restante{remaining > 1 ? "s" : ""}
           </Badge>
         )}
       </header>
 
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle>Tes ingrédients</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="ex: poulet, riz, brocoli…"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addIngredient();
-                }
-              }}
-            />
-            <Button type="button" variant="outline" onClick={addIngredient}>
-              <Plus className="size-4" />
-              Ajouter
-            </Button>
-          </div>
-
-          {ingredients.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {ingredients.map((ing) => (
-                <Badge key={ing} variant="secondary" className="gap-1 py-1 pr-1 pl-2.5">
-                  {ing}
-                  <button
-                    type="button"
-                    onClick={() => setIngredients((prev) => prev.filter((i) => i !== ing))}
-                    className="rounded-full p-0.5 transition hover:bg-foreground/10"
-                    aria-label={`Retirer ${ing}`}
-                  >
-                    <X className="size-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="maxCalories">Calories max (optionnel)</Label>
-              <Input
-                id="maxCalories"
-                type="number"
-                inputMode="numeric"
-                placeholder="ex: 600"
-                value={maxCalories}
-                onChange={(e) => setMaxCalories(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cuisine">Type de cuisine (optionnel)</Label>
-              <Input
-                id="cuisine"
-                placeholder="ex: italienne, asiatique…"
-                value={cuisine}
-                onChange={(e) => setCuisine(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <Button onClick={handleGenerate} disabled={generating} className="self-start">
-            <Sparkles className="size-4" />
-            {generating ? "Génération…" : "Générer une recette"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {generating && (
-        <Card>
-          <CardContent className="flex flex-col gap-3 py-6">
-            <Skeleton className="h-6 w-2/3" />
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </CardContent>
-        </Card>
-      )}
-
-      {recipe && !generating && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">{recipe.title}</CardTitle>
-            <p className="text-sm text-muted-foreground">{recipe.description}</p>
-            <div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock className="size-4" />
-                {recipe.prepTimeMinutes + recipe.cookTimeMinutes} min
-              </span>
-              <span className="flex items-center gap-1">
-                <Users className="size-4" />
-                {recipe.servings} pers.
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-5">
-            <div className="grid grid-cols-4 gap-2">
-              <Macro label="Calories" value={recipe.calories} unit="" />
-              <Macro label="Protéines" value={recipe.protein} unit="g" />
-              <Macro label="Glucides" value={recipe.carbs} unit="g" />
-              <Macro label="Lipides" value={recipe.fat} unit="g" />
-            </div>
-
-            <div>
-              <h3 className="mb-2 font-semibold">Ingrédients</h3>
-              <ul className="flex flex-col gap-1 text-sm">
-                {recipe.ingredients.map((ing, i) => (
-                  <li key={`${ing.name}-${String(i)}`} className="flex justify-between border-b py-1">
-                    <span>{ing.name}</span>
-                    <span className="text-muted-foreground">
-                      {ing.quantity} {ing.unit}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="mb-2 font-semibold">Préparation</h3>
-              <ol className="flex flex-col gap-2 text-sm">
-                {recipe.instructions.map((step, i) => (
-                  <li key={`step-${String(i)}`} className="flex gap-3">
-                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-                      {i + 1}
-                    </span>
-                    <span className="pt-0.5">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            {recipe.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {recipe.tags.map((t) => (
-                  <Badge key={t} variant="outline">
-                    {t}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {recipe.tips && recipe.tips.length > 0 && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                <p className="mb-1 font-semibold text-primary">Astuces</p>
-                <ul className="flex list-inside list-disc flex-col gap-1 text-muted-foreground">
-                  {recipe.tips.map((tip, i) => (
-                    <li key={`tip-${String(i)}`}>{tip}</li>
+      <div className="flex flex-1 flex-col gap-3 pb-4">
+        {messages.map((m, i) => (
+          <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+            <div
+              className={
+                m.role === "user"
+                  ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground"
+                  : "max-w-[90%] rounded-2xl rounded-bl-sm bg-card border px-4 py-2.5 text-sm"
+              }
+            >
+              <p className="whitespace-pre-wrap">{m.content}</p>
+              {m.recipe && <RecipeCard recipe={m.recipe} />}
+              {m.suggestions && m.suggestions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {m.suggestions.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setDraft((d) => (d ? `${d}, ${s}` : s))}
+                      className="rounded-full border px-2.5 py-1 text-xs transition hover:border-primary/60 hover:bg-muted"
+                    >
+                      + {s}
+                    </button>
                   ))}
-                </ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {sending && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl rounded-bl-sm border bg-card px-4 py-3">
+              <span className="flex gap-1">
+                <span className="size-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+                <span className="size-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+                <span className="size-2 animate-bounce rounded-full bg-muted-foreground" />
+              </span>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send();
+        }}
+        className="sticky bottom-0 flex gap-2 bg-background/90 py-2 backdrop-blur"
+      >
+        <Input
+          placeholder="ex: j'ai du poulet, du riz et des courgettes…"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          disabled={sending}
+        />
+        <Button type="submit" size="icon" disabled={sending || !draft.trim()} aria-label="Envoyer">
+          <Send className="size-4" />
+        </Button>
+      </form>
     </main>
   );
 }
