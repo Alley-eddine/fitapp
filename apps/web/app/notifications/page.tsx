@@ -34,6 +34,7 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [perm, setPerm] = useState<NotificationStatus>("denied");
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!getAuth()) {
@@ -73,6 +74,27 @@ export default function NotificationsPage() {
       await showTestNotification();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Échec");
+    }
+  }
+
+  async function handleServerTest() {
+    setSending(true);
+    try {
+      const res = await notificationsApi.sendTest();
+      const parts = [res.email ? "email" : null, res.sms ? "SMS" : null].filter(Boolean);
+      if (parts.length > 0) {
+        toast.success(`Envoyé : ${parts.join(" + ")}`);
+      } else if (!res.hasPhone) {
+        toast.message("Email déclenché (vérifie l'historique). Ajoute un téléphone pour le SMS.");
+      } else {
+        toast.message("Déclenché — vois l'historique");
+      }
+      const r = await notificationsApi.history();
+      setItems(r.items);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Échec de l'envoi");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -119,6 +141,19 @@ export default function NotificationsPage() {
               </Button>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle className="text-base">Email &amp; SMS</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-muted-foreground">Reçois un email (et un SMS si un numéro est renseigné).</p>
+          <Button size="sm" disabled={sending} onClick={() => void handleServerTest()}>
+            <Mail className="size-4" />
+            {sending ? "Envoi…" : "M'envoyer un test"}
+          </Button>
         </CardContent>
       </Card>
 
