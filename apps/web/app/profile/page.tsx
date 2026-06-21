@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Flame } from "lucide-react";
+import { ArrowLeft, Flame, CreditCard, ChevronRight } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import {
   profileApi,
@@ -153,6 +153,18 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       )}
+
+      <Link href="/billing" className="mb-4 block">
+        <Card className="transition hover:border-primary/60">
+          <CardContent className="flex items-center justify-between py-4">
+            <span className="flex items-center gap-3 font-semibold">
+              <CreditCard className="size-5 text-primary" />
+              Mon abonnement
+            </span>
+            <ChevronRight className="size-4 text-primary" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <Card>
         <CardHeader>

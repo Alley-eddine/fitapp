@@ -35,6 +35,13 @@ export function getToken(): string | null {
   return getAuth()?.token ?? null;
 }
 
+/** Merge a partial user into the stored auth (e.g. after a subscription change). */
+export function updateUser(patch: Partial<AuthUser>): void {
+  const current = getAuth();
+  if (!current) return;
+  setAuth({ token: current.token, user: { ...current.user, ...patch } });
+}
+
 export function logout(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
