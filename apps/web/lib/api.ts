@@ -2,6 +2,7 @@ import { getToken, type AuthUser } from "./auth";
 
 const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL ?? "http://localhost:3001";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002";
+const PAYMENT_URL = process.env.NEXT_PUBLIC_PAYMENT_URL ?? "http://localhost:3005";
 
 interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
@@ -278,4 +279,26 @@ export const nutritionApi = {
     request<{ recipe: RateLimitInfo; frigo: RateLimitInfo }>(API_URL, "/api/nutrition/rate-limit", {
       auth: true,
     }),
+};
+
+export interface Plan {
+  tier: "pro" | "premium";
+  name: string;
+  price: string;
+  amount: number;
+  currency: string;
+  interval: string;
+}
+
+export const paymentApi = {
+  plans: () => request<{ plans: Plan[] }>(PAYMENT_URL, "/api/payment/plans"),
+  checkout: (tier: "pro" | "premium") =>
+    request<{ url: string; sessionId: string }>(PAYMENT_URL, "/api/payment/checkout", {
+      method: "POST",
+      body: { tier },
+      auth: true,
+    }),
+  portal: () => request<{ url: string }>(PAYMENT_URL, "/api/payment/portal", { method: "POST", auth: true }),
+  sync: () =>
+    request<Record<string, unknown>>(PAYMENT_URL, "/api/payment/sync", { method: "POST", auth: true }),
 };
