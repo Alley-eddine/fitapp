@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Card } from "@/components/ui";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 const MESSAGES: Record<string, string> = {
   authentication_failed: "La connexion avec Google a échoué.",
@@ -20,15 +21,17 @@ export default function AuthErrorPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
-      <Card className="w-full max-w-md text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-red-400/15 text-2xl">
-          ⚠️
-        </div>
-        <h1 className="text-xl font-bold">Connexion impossible</h1>
-        <p className="mt-2 text-sm text-slate-400">{message}</p>
-        <Link href="/login" className="mt-6 block">
-          <Button className="w-full">Retour à la connexion</Button>
-        </Link>
+      <Card className="w-full max-w-md">
+        <CardContent className="py-8 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/15 text-2xl">
+            ⚠️
+          </div>
+          <h1 className="text-xl font-bold">Connexion impossible</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{message}</p>
+          <Link href="/login" className={buttonVariants({ className: "mt-6 w-full" })}>
+            Retour à la connexion
+          </Link>
+        </CardContent>
       </Card>
     </main>
   );

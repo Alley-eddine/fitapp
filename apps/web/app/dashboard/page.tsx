@@ -3,9 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Dumbbell, Scale, LogOut, ChevronRight } from "lucide-react";
 import { getAuth, logout, type AuthUser } from "@/lib/auth";
 import { coachApi, type CoachStudent } from "@/lib/api";
-import { Button, Card, RoleBadge } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RoleBadge } from "@/components/role-badge";
+
+const TILES = [
+  { href: "/workouts", label: "Mes séances", icon: Dumbbell },
+  { href: "/weight", label: "Mon poids", icon: Scale },
+];
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -39,71 +47,99 @@ export default function DashboardPage() {
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-8 flex items-center justify-between">
         <div>
-          <p className="text-sm text-slate-400">Bonjour</p>
+          <p className="text-sm text-muted-foreground">Bonjour</p>
           <h1 className="flex items-center gap-3 text-2xl font-bold">
             {user.name ?? user.email}
             <RoleBadge role={user.role} />
           </h1>
         </div>
-        <Button onClick={handleLogout} className="bg-slate-800 text-slate-200 hover:bg-slate-700">
+        <Button variant="outline" size="sm" onClick={handleLogout}>
+          <LogOut className="size-4" />
           Déconnexion
         </Button>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <p className="text-sm text-slate-400">Abonnement</p>
-          <p className="mt-1 text-xl font-semibold capitalize text-cyan-400">{user.subscriptionTier}</p>
+          <CardHeader>
+            <CardTitle className="text-sm font-normal text-muted-foreground">Abonnement</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-semibold capitalize text-primary">{user.subscriptionTier}</p>
+          </CardContent>
         </Card>
         <Card>
-          <p className="text-sm text-slate-400">Email</p>
-          <p className="mt-1 text-xl font-semibold">{user.email}</p>
+          <CardHeader>
+            <CardTitle className="text-sm font-normal text-muted-foreground">Email</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="truncate text-xl font-semibold">{user.email}</p>
+          </CardContent>
         </Card>
       </div>
 
-      <Link href="/workouts" className="mt-4 block">
-        <Card className="flex items-center justify-between transition hover:border-cyan-400/60">
-          <span className="font-semibold">🏋️ Mes séances</span>
-          <span className="text-cyan-300">→</span>
-        </Card>
-      </Link>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {TILES.map(({ href, label, icon: Icon }) => (
+          <Link key={href} href={href}>
+            <Card className="transition hover:border-primary/60">
+              <CardContent className="flex items-center justify-between py-5">
+                <span className="flex items-center gap-3 font-semibold">
+                  <Icon className="size-5 text-primary" />
+                  {label}
+                </span>
+                <ChevronRight className="size-4 text-primary" />
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
 
       {user.role === "coach" && (
         <Card className="mt-4">
-          <h2 className="mb-3 text-lg font-semibold">Mes élèves</h2>
-          {studentsError && <p className="text-sm text-red-400">{studentsError}</p>}
-          {!studentsError && students.length === 0 && (
-            <p className="text-sm text-slate-400">Aucun élève pour l&apos;instant.</p>
-          )}
-          <ul className="flex flex-col gap-2">
+          <CardHeader>
+            <CardTitle>Mes élèves</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {studentsError && <p className="text-sm text-destructive">{studentsError}</p>}
+            {!studentsError && students.length === 0 && (
+              <p className="text-sm text-muted-foreground">Aucun élève pour l&apos;instant.</p>
+            )}
             {students.map((s) => (
-              <li
+              <div
                 key={s.id}
-                className="flex items-center justify-between rounded-lg border border-slate-800 px-4 py-2"
+                className="flex items-center justify-between rounded-lg border px-4 py-2"
               >
                 <span>{s.name ?? s.email}</span>
-                <span className="text-sm text-slate-400">{s.status}</span>
-              </li>
+                <span className="text-sm text-muted-foreground">{s.status}</span>
+              </div>
             ))}
-          </ul>
+          </CardContent>
         </Card>
       )}
 
       {user.role === "student" && (
         <Card className="mt-4">
-          <h2 className="text-lg font-semibold">Ta séance du jour</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Bientôt : le programme préparé par ton coach apparaîtra ici, déjà réglé.
-          </p>
+          <CardHeader>
+            <CardTitle>Ta séance du jour</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Bientôt : le programme préparé par ton coach apparaîtra ici, déjà réglé.
+            </p>
+          </CardContent>
         </Card>
       )}
 
       {user.role === "user" && (
         <Card className="mt-4">
-          <h2 className="text-lg font-semibold">Mode autonome</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Suis tes séances, ton poids et tes mensurations en toute autonomie.
-          </p>
+          <CardHeader>
+            <CardTitle>Mode autonome</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Suis tes séances, ton poids et tes mensurations en toute autonomie.
+            </p>
+          </CardContent>
         </Card>
       )}
     </main>

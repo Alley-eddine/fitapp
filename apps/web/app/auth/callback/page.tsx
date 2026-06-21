@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
 import { setAuth } from "@/lib/auth";
-import { Card } from "@/components/ui";
+import { Card, CardContent } from "@/components/ui/card";
 
 /**
  * OAuth landing page. The auth service redirects here with the freshly issued
@@ -45,8 +45,10 @@ export default function AuthCallbackPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
-      <Card className="w-full max-w-md text-center">
-        <p className="text-slate-300">Connexion en cours…</p>
+      <Card className="w-full max-w-md">
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Connexion en cours…
+        </CardContent>
       </Card>
     </main>
   );

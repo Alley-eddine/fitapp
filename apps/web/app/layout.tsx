@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "FitCoach AI",
@@ -16,8 +17,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
-      <body>{children}</body>
+    <html lang="fr" className="dark">
+      <body className="antialiased">
+        {children}
+        <Toaster richColors position="top-center" />
+      </body>
     </html>
   );
 }
