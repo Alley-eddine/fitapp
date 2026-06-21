@@ -3,7 +3,7 @@ import { updateProfileSchema } from '@fitapp/shared';
 import { query } from '../config/database.js';
 import { authMiddleware } from '../middleware/auth.js';
 
-interface ProfileRow {
+export interface ProfileRow {
   id: string;
   user_id: string;
   current_weight: number | null;
@@ -19,7 +19,7 @@ interface ProfileRow {
   onboarding_completed: boolean;
 }
 
-const ACTIVITY_FACTORS: Record<string, number> = {
+export const ACTIVITY_FACTORS: Record<string, number> = {
   sedentary: 1.2,
   light: 1.375,
   moderate: 1.55,
@@ -27,7 +27,7 @@ const ACTIVITY_FACTORS: Record<string, number> = {
   very_active: 1.9,
 };
 
-const GOAL_ADJUSTMENTS: Record<string, number> = {
+export const GOAL_ADJUSTMENTS: Record<string, number> = {
   lose_weight: -500,
   gain_muscle: 300,
   maintain: 0,
@@ -38,7 +38,7 @@ const GOAL_ADJUSTMENTS: Record<string, number> = {
  * Daily calorie target via Mifflin-St Jeor BMR x activity factor + goal
  * adjustment. Returns null when the required inputs are missing.
  */
-const computeDailyCalories = (row: ProfileRow): number | null => {
+export const computeDailyCalories = (row: ProfileRow): number | null => {
   if (row.current_weight == null || row.height == null || !row.birth_date || !row.gender) {
     return null;
   }
