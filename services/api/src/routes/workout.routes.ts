@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { createWorkoutSchema } from '@fitapp/shared';
 import { query } from '../config/database.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { sendEmail, emailHtml } from '../notifications.client.js';
 
 interface WorkoutRow {
   id: string;
@@ -162,6 +163,20 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
             insertedExercises.push(exResult.rows[0]);
           }
         }
+      }
+
+      // Notify the user that their session was logged (best-effort).
+      if (workout && request.user?.email) {
+        const burned = workout.calories_burned ?? 0;
+        void sendEmail({
+          to: request.user.email,
+          subject: 'Séance enregistrée 💪',
+          html: emailHtml(
+            'Séance enregistrée 💪',
+            `Bravo ! Ta séance « ${workout.type} » est enregistrée (${String(workout.duration_minutes)} min, ${String(burned)} kcal).`
+          ),
+          text: `Séance « ${workout.type} » enregistrée.`,
+        });
       }
 
       return await reply.status(201).send(mapWorkout(workout, insertedExercises));
