@@ -61,12 +61,20 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Link href="/workouts" className="mt-4 block">
-        <Card className="flex items-center justify-between transition hover:border-cyan-400/60">
-          <span className="font-semibold">🏋️ Mes séances</span>
-          <span className="text-cyan-300">→</span>
-        </Card>
-      </Link>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Link href="/workouts" className="block">
+          <Card className="flex items-center justify-between transition hover:border-cyan-400/60">
+            <span className="font-semibold">🏋️ Mes séances</span>
+            <span className="text-cyan-300">→</span>
+          </Card>
+        </Link>
+        <Link href="/weight" className="block">
+          <Card className="flex items-center justify-between transition hover:border-cyan-400/60">
+            <span className="font-semibold">⚖️ Mon poids</span>
+            <span className="text-cyan-300">→</span>
+          </Card>
+        </Link>
+      </div>
 
       {user.role === "coach" && (
         <Card className="mt-4">

@@ -85,3 +85,17 @@ export const workoutApi = {
   create: (data: CreateWorkoutInput) =>
     request<Workout>(API_URL, "/api/workouts", { method: "POST", body: data, auth: true }),
 };
+
+export interface WeightEntry {
+  id: string;
+  userId: string;
+  weight: number;
+  loggedAt: string;
+}
+
+export const weightApi = {
+  history: (days = 90) =>
+    request<WeightEntry[]>(API_URL, `/api/weight?days=${String(days)}`, { auth: true }),
+  log: (weight: number) =>
+    request<WeightEntry>(API_URL, "/api/weight", { method: "POST", body: { weight }, auth: true }),
+};
