@@ -205,3 +205,53 @@ export const exercisesApi = {
     );
   },
 };
+
+export interface RecipeIngredient {
+  name: string;
+  quantity: string;
+  unit: string;
+}
+
+export interface GeneratedRecipe {
+  title: string;
+  description: string;
+  ingredients: RecipeIngredient[];
+  instructions: string[];
+  prepTimeMinutes: number;
+  cookTimeMinutes: number;
+  servings: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  tags: string[];
+  tips?: string[];
+}
+
+export interface GenerateRecipeInput {
+  ingredients: string[];
+  preferences?: {
+    maxCalories?: number;
+    minProtein?: number;
+    cuisineType?: string;
+  };
+}
+
+export interface RateLimitInfo {
+  allowed: boolean;
+  remaining: number;
+  resetAt: string;
+}
+
+export const nutritionApi = {
+  generateRecipe: (input: GenerateRecipeInput) =>
+    request<{ recipe: GeneratedRecipe }>(API_URL, "/api/nutrition/generate-recipe", {
+      method: "POST",
+      body: input,
+      auth: true,
+    }),
+  rateLimit: () =>
+    request<{ recipe: RateLimitInfo; frigo: RateLimitInfo }>(API_URL, "/api/nutrition/rate-limit", {
+      auth: true,
+    }),
+};
