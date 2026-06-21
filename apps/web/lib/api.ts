@@ -114,3 +114,39 @@ export const weightApi = {
   log: (weight: number) =>
     request<WeightEntry>(API_URL, "/api/weight", { method: "POST", body: { weight }, auth: true }),
 };
+
+export type Gender = "male" | "female";
+export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active";
+export type FitnessGoal = "lose_weight" | "gain_muscle" | "maintain" | "improve_endurance";
+
+export interface Profile {
+  id: string;
+  userId: string;
+  currentWeight: number | null;
+  targetWeight: number | null;
+  height: number | null;
+  birthDate: string | null;
+  gender: Gender | null;
+  activityLevel: ActivityLevel;
+  goal: FitnessGoal;
+  dailyCalorieTarget: number | null;
+  allergies: string[];
+  dietPreferences: string[];
+  onboardingCompleted: boolean;
+}
+
+export interface ProfileUpdate {
+  currentWeight?: number;
+  targetWeight?: number;
+  height?: number;
+  birthDate?: string;
+  gender?: Gender;
+  activityLevel?: ActivityLevel;
+  goal?: FitnessGoal;
+}
+
+export const profileApi = {
+  get: () => request<Profile>(API_URL, "/api/profile", { auth: true }),
+  update: (data: ProfileUpdate) =>
+    request<Profile>(API_URL, "/api/profile", { method: "PUT", body: data, auth: true }),
+};
