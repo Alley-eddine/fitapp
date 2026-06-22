@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Play } from "lucide-react";
+import { ArrowLeft, Plus, Play, Pencil, Trash2, X } from "lucide-react";
 import { getAuth } from "@/lib/auth";
-import { workoutApi, type Workout } from "@/lib/api";
+import { workoutApi, type Workout, type CreateWorkoutInput } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +19,10 @@ interface ExerciseRow {
   sets: string;
   reps: string;
   weightKg: string;
+  rest: string;
 }
 
-const emptyExercise = (): ExerciseRow => ({ name: "", sets: "3", reps: "10", weightKg: "" });
+const emptyExercise = (): ExerciseRow => ({ name: "", sets: "3", reps: "10", weightKg: "", rest: "90" });
 
 export default function WorkoutsPage() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function WorkoutsPage() {
   const [duration, setDuration] = useState("45");
   const [exercises, setExercises] = useState<ExerciseRow[]>([emptyExercise()]);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [session, setSession] = useState<{ name: string; exercises: SessionExercise[] } | null>(null);
 
   function refresh() {
@@ -67,9 +69,26 @@ export default function WorkoutsPage() {
     });
   }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    const cleaned = exercises
+  function resetForm() {
+    setName("");
+    setDuration("45");
+    setExercises([emptyExercise()]);
+    setEditingId(null);
+  }
+
+  function toExerciseRows(w: Workout): ExerciseRow[] {
+    const rows = w.exercises.map((ex) => ({
+      name: ex.name,
+      sets: ex.sets != null ? String(ex.sets) : "3",
+      reps: ex.reps != null ? String(ex.reps) : "10",
+      weightKg: ex.weightKg != null ? String(ex.weightKg) : "",
+      rest: ex.restSeconds != null ? String(ex.restSeconds) : "90",
+    }));
+    return rows.length > 0 ? rows : [emptyExercise()];
+  }
+
+  function cleanedExercises() {
+    return exercises
       .filter((ex) => ex.name.trim())
       .map((ex) => ({
         name: ex.name.trim(),
@@ -77,23 +96,57 @@ export default function WorkoutsPage() {
         sets: Number(ex.sets) || undefined,
         reps: Number(ex.reps) || undefined,
         weightKg: ex.weightKg ? Number(ex.weightKg) : undefined,
+        restSeconds: Number(ex.rest) || undefined,
       }));
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    const cleaned = cleanedExercises();
     if (!name.trim() || cleaned.length === 0) {
       toast.error("Donne un nom de séance et au moins un exercice.");
       return;
     }
+    const payload: CreateWorkoutInput = {
+      type: name.trim(),
+      durationMinutes: Number(duration) || 45,
+      exercises: cleaned,
+    };
     setSaving(true);
     try {
-      await workoutApi.create({ type: name.trim(), durationMinutes: Number(duration) || 45, exercises: cleaned });
-      setName("");
-      setDuration("45");
-      setExercises([emptyExercise()]);
-      toast.success("Séance enregistrée");
+      if (editingId) {
+        await workoutApi.update(editingId, payload);
+        toast.success("Séance modifiée");
+      } else {
+        await workoutApi.create(payload);
+        toast.success("Séance enregistrée");
+      }
+      resetForm();
       refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Échec de l'enregistrement");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function startEdit(w: Workout) {
+    setEditingId(w.id);
+    setName(w.type);
+    setDuration(String(w.durationMinutes));
+    setExercises(toExerciseRows(w));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function handleDelete(w: Workout) {
+    if (!window.confirm(`Supprimer la séance « ${w.type} » ?`)) return;
+    try {
+      await workoutApi.remove(w.id);
+      if (editingId === w.id) resetForm();
+      toast.success("Séance supprimée");
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Échec de la suppression");
     }
   }
 
@@ -105,6 +158,7 @@ export default function WorkoutsPage() {
         sets: Number(ex.sets) || 3,
         reps: Number(ex.reps) || undefined,
         weightKg: ex.weightKg ? Number(ex.weightKg) : undefined,
+        restSeconds: Number(ex.rest) || undefined,
       }));
     if (list.length === 0) {
       toast.error("Ajoute au moins un exercice pour démarrer.");
@@ -117,8 +171,9 @@ export default function WorkoutsPage() {
     const list: SessionExercise[] = w.exercises.map((ex) => ({
       name: ex.name,
       sets: ex.sets ?? 3,
-      reps: ex.reps,
+      reps: ex.reps ?? undefined,
       weightKg: ex.weightKg,
+      restSeconds: ex.restSeconds ?? undefined,
     }));
     if (list.length === 0) {
       toast.error("Cette séance n'a aucun exercice.");
@@ -134,7 +189,8 @@ export default function WorkoutsPage() {
       exerciseType: "muscu" as const,
       sets: ex.sets,
       reps: ex.reps,
-      weightKg: ex.weightKg,
+      weightKg: typeof ex.weightKg === "string" ? Number(ex.weightKg) || undefined : ex.weightKg ?? undefined,
+      restSeconds: ex.restSeconds ?? undefined,
     }));
     const sessionName = session.name;
     setSession(null);
@@ -161,6 +217,8 @@ export default function WorkoutsPage() {
     );
   }
 
+  const isEditing = editingId !== null;
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-6">
@@ -175,11 +233,17 @@ export default function WorkoutsPage() {
       </header>
 
       <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Nouvelle séance</CardTitle>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle>{isEditing ? "Modifier la séance" : "Nouvelle séance"}</CardTitle>
+          {isEditing && (
+            <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
+              <X className="size-4" />
+              Annuler
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreate} className="flex flex-col gap-3">
+          <form onSubmit={handleSave} className="flex flex-col gap-3">
             <div className="flex gap-3">
               <Input placeholder="Nom (ex: Dos / Biceps)" value={name} onChange={(e) => setName(e.target.value)} />
               <Input
@@ -187,38 +251,24 @@ export default function WorkoutsPage() {
                 placeholder="Durée (min)"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                className="w-32"
+                className="w-28"
               />
             </div>
 
+            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 text-xs text-muted-foreground">
+              <span>Exercice</span>
+              <span className="w-16 text-center">Séries</span>
+              <span className="w-16 text-center">Reps</span>
+              <span className="w-16 text-center">Kg</span>
+              <span className="w-16 text-center">Repos s</span>
+            </div>
             {exercises.map((ex, i) => (
-              <div key={i} className="flex gap-2">
-                <Input
-                  placeholder="Exercice"
-                  value={ex.name}
-                  onChange={(e) => updateExercise(i, "name", e.target.value)}
-                />
-                <Input
-                  type="number"
-                  placeholder="Séries"
-                  value={ex.sets}
-                  onChange={(e) => updateExercise(i, "sets", e.target.value)}
-                  className="w-24"
-                />
-                <Input
-                  type="number"
-                  placeholder="Reps"
-                  value={ex.reps}
-                  onChange={(e) => updateExercise(i, "reps", e.target.value)}
-                  className="w-24"
-                />
-                <Input
-                  type="number"
-                  placeholder="Kg"
-                  value={ex.weightKg}
-                  onChange={(e) => updateExercise(i, "weightKg", e.target.value)}
-                  className="w-24"
-                />
+              <div key={i} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2">
+                <Input placeholder="Exercice" value={ex.name} onChange={(e) => updateExercise(i, "name", e.target.value)} />
+                <Input type="number" value={ex.sets} onChange={(e) => updateExercise(i, "sets", e.target.value)} className="w-16" />
+                <Input type="number" value={ex.reps} onChange={(e) => updateExercise(i, "reps", e.target.value)} className="w-16" />
+                <Input type="number" placeholder="—" value={ex.weightKg} onChange={(e) => updateExercise(i, "weightKg", e.target.value)} className="w-16" />
+                <Input type="number" value={ex.rest} onChange={(e) => updateExercise(i, "rest", e.target.value)} className="w-16" />
               </div>
             ))}
 
@@ -237,12 +287,14 @@ export default function WorkoutsPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button type="button" onClick={startSession} className="grow sm:grow-0">
-                <Play className="size-4" />
-                Démarrer la séance
-              </Button>
-              <Button type="submit" variant="outline" disabled={saving}>
-                {saving ? "Enregistrement…" : "Enregistrer sans démarrer"}
+              {!isEditing && (
+                <Button type="button" onClick={startSession} className="grow sm:grow-0">
+                  <Play className="size-4" />
+                  Démarrer la séance
+                </Button>
+              )}
+              <Button type="submit" variant={isEditing ? "default" : "outline"} disabled={saving}>
+                {saving ? "Enregistrement…" : isEditing ? "Enregistrer les modifications" : "Enregistrer sans démarrer"}
               </Button>
             </div>
           </form>
@@ -259,7 +311,7 @@ export default function WorkoutsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {workouts.map((w) => (
-            <Card key={w.id}>
+            <Card key={w.id} className={editingId === w.id ? "border-primary/60" : ""}>
               <CardContent className="py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -271,17 +323,25 @@ export default function WorkoutsPage() {
                       {w.exercises.map((e) => e.name).join(", ") || "—"}
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(w.loggedAt).toLocaleDateString("fr-FR")}
-                    </span>
-                    {w.exercises.length > 0 && (
-                      <Button size="sm" onClick={() => startSavedWorkout(w)}>
-                        <Play className="size-4" />
-                        Démarrer
-                      </Button>
-                    )}
-                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {new Date(w.loggedAt).toLocaleDateString("fr-FR")}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {w.exercises.length > 0 && (
+                    <Button size="sm" onClick={() => startSavedWorkout(w)}>
+                      <Play className="size-4" />
+                      Démarrer
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => startEdit(w)}>
+                    <Pencil className="size-4" />
+                    Modifier
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => void handleDelete(w)}>
+                    <Trash2 className="size-4" />
+                    Supprimer
+                  </Button>
                 </div>
               </CardContent>
             </Card>

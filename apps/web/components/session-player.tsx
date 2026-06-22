@@ -9,10 +9,12 @@ export interface SessionExercise {
   name: string;
   sets: number;
   reps?: number;
-  weightKg?: number;
+  weightKg?: number | string | null;
+  restSeconds?: number | null;
 }
 
 const DEFAULT_REST = 90;
+const REST_BETWEEN_EXERCISES = 120;
 
 export function SessionPlayer({
   exercises,
@@ -68,8 +70,10 @@ export function SessionPlayer({
       onFinish(Math.round((Date.now() - startedAt.current) / 1000));
       return;
     }
-    restDuration.current = DEFAULT_REST;
-    setRestLeft(DEFAULT_REST);
+    // Longer rest before moving to the next exercise; per-exercise rest between sets.
+    const rest = isLastSet ? REST_BETWEEN_EXERCISES : current.restSeconds ?? DEFAULT_REST;
+    restDuration.current = rest;
+    setRestLeft(rest);
     setResting(true);
   }
 
@@ -99,7 +103,9 @@ export function SessionPlayer({
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6 text-center">
         {resting ? (
           <>
-            <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Repos</p>
+            <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              {setNo >= current.sets ? "Repos · exercice suivant" : "Repos · série suivante"}
+            </p>
             <ProgressRing value={(restLeft / restDuration.current) * 100} size={220} strokeWidth={16}>
               <span className="text-5xl font-bold tabular-nums">{restLeft}</span>
               <span className="text-sm text-muted-foreground">secondes</span>
