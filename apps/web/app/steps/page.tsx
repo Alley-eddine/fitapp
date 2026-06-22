@@ -52,6 +52,8 @@ export default function StepsPage() {
       .then(([h, t]) => {
         setHistory(h);
         setToday(t);
+        // Pre-fill the goal field with the current (sticky) goal.
+        setGoal((g) => (g === "" ? String(t.goal) : g));
       })
       .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Erreur de chargement"));
   }
@@ -115,11 +117,14 @@ export default function StepsPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Pas du jour</DialogTitle>
-              <DialogDescription>Un relevé par jour ; une nouvelle saisie remplace celle d&apos;aujourd&apos;hui.</DialogDescription>
+              <DialogDescription>
+                Saisis le <strong>total</strong> de tes pas pour aujourd&apos;hui (une mise à jour
+                remplace le total du jour). Ton objectif est conservé.
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleLog} className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="steps">Nombre de pas</Label>
+                <Label htmlFor="steps">Pas du jour (total)</Label>
                 <Input
                   id="steps"
                   type="number"
@@ -131,7 +136,7 @@ export default function StepsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="goal">Objectif (optionnel)</Label>
+                <Label htmlFor="goal">Objectif quotidien</Label>
                 <Input
                   id="goal"
                   type="number"
