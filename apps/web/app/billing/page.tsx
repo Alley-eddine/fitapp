@@ -42,7 +42,14 @@ export default function BillingPage() {
       .catch(() => toast.error("Impossible de charger les offres"))
       .finally(() => setLoading(false));
     // Reconcile in case the user just came back from Stripe Checkout.
-    void refresh(true);
+    const status = new URLSearchParams(window.location.search).get("status");
+    if (status === "cancel") {
+      toast.message("Paiement annulé");
+      void refresh(true);
+    } else {
+      // status === "success" → show the new tier; otherwise reconcile silently.
+      void refresh(status === "success");
+    }
   }, [router]);
 
   async function refresh(silent = false) {
