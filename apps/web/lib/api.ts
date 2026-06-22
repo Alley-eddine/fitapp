@@ -78,7 +78,8 @@ export interface WorkoutExercise {
   exerciseType?: "muscu" | "cardio" | "hiit";
   sets?: number;
   reps?: number;
-  weightKg?: number;
+  weightKg?: number | string | null;
+  restSeconds?: number | null;
 }
 
 export interface Workout {
@@ -106,6 +107,10 @@ export const workoutApi = {
   list: () => request<{ items: Workout[]; total: number }>(API_URL, "/api/workouts?limit=20", { auth: true }),
   create: (data: CreateWorkoutInput) =>
     request<Workout>(API_URL, "/api/workouts", { method: "POST", body: data, auth: true }),
+  update: (id: string, data: CreateWorkoutInput) =>
+    request<Workout>(API_URL, `/api/workouts/${id}`, { method: "PUT", body: data, auth: true }),
+  remove: (id: string) =>
+    request<Record<string, unknown>>(API_URL, `/api/workouts/${id}`, { method: "DELETE", auth: true }),
   weeklyStats: () => request<WeeklyStats>(API_URL, "/api/workouts/stats/weekly", { auth: true }),
 };
 
