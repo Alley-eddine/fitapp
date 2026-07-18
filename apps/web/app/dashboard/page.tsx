@@ -33,6 +33,7 @@ import {
   type Workout,
   type WeeklyStats,
   type StudentProgramResponse,
+  type StudentNutritionPlan,
 } from "@/lib/api";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +65,9 @@ export default function DashboardPage() {
   const [weekly, setWeekly] = useState<WeeklyStats | null>(null);
   const [students, setStudents] = useState<CoachStudent[]>([]);
   const [studentProgram, setStudentProgram] = useState<StudentProgramResponse | null>(null);
+  const [studentNutrition, setStudentNutrition] = useState<{
+    plan: StudentNutritionPlan | null;
+  } | null>(null);
 
   useEffect(() => {
     const auth = getAuth();
@@ -97,6 +101,10 @@ export default function DashboardPage() {
       studentApi
         .program()
         .then(setStudentProgram)
+        .catch(() => undefined);
+      studentApi
+        .nutrition()
+        .then(setStudentNutrition)
         .catch(() => undefined);
     }
 
@@ -334,6 +342,38 @@ export default function DashboardPage() {
                   Jour de repos
                   {studentProgram.next ? ` · à suivre : ${studentProgram.next.title}` : ""}
                 </p>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
+      {/* Student: today's meals */}
+      {user.role === "student" && (
+        <Link href="/student/nutrition" className="mt-4 block">
+          <Card className="border-primary/30 transition hover:border-primary/60">
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Mes repas</CardTitle>
+              <ChevronRight className="size-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              {!studentNutrition ? (
+                <Skeleton className="h-10 w-full" />
+              ) : !studentNutrition.plan ? (
+                <p className="text-sm text-muted-foreground">
+                  Ton coach ne t&apos;a pas encore assigné de plan nutrition.
+                </p>
+              ) : (
+                <>
+                  <p className="font-semibold">{studentNutrition.plan.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {studentNutrition.plan.meals.length} repas
+                    {studentNutrition.plan.dailyCalories
+                      ? ` · ${String(studentNutrition.plan.dailyCalories)} kcal/j`
+                      : ""}{" "}
+                    · recettes IA dans le cadre
+                  </p>
+                </>
               )}
             </CardContent>
           </Card>
