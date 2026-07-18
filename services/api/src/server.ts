@@ -12,6 +12,7 @@ import { nutritionRoutes } from './routes/nutrition.routes.js';
 import { exercisesRoutes } from './routes/exercises.routes.js';
 import { notificationHistoryRoutes } from './routes/notification-history.routes.js';
 import { coachRoutes } from './routes/coach.routes.js';
+import { invitationRoutes } from './routes/invitation.routes.js';
 import { env } from './config/env.js';
 
 collectDefaultMetrics();
@@ -39,6 +40,7 @@ export const createServer = async () => {
   await fastify.register(exercisesRoutes, { prefix: '/api' });
   await fastify.register(notificationHistoryRoutes, { prefix: '/api' });
   await fastify.register(coachRoutes, { prefix: '/api' });
+  await fastify.register(invitationRoutes, { prefix: '/api' });
 
   // Prometheus metrics endpoint
   fastify.get('/metrics', async (_request, reply) => {
