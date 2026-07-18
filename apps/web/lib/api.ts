@@ -96,6 +96,73 @@ export const coachApi = {
     }),
 };
 
+export interface ProgramExercise {
+  id?: string;
+  name: string;
+  exerciseType?: string;
+  sets?: number | null;
+  reps?: number | null;
+  weightKg?: number | null;
+  restSeconds?: number | null;
+}
+
+export interface ProgramDay {
+  id?: string;
+  dayOfWeek: number;
+  title: string;
+  exercises: ProgramExercise[];
+}
+
+export interface ProgramSummary {
+  id: string;
+  name: string;
+  phase: number;
+  description: string | null;
+  dayCount: number;
+  assignedCount: number;
+  createdAt: string;
+}
+
+export interface ProgramDetail {
+  id: string;
+  name: string;
+  phase: number;
+  description: string | null;
+  createdAt: string;
+  days: ProgramDay[];
+}
+
+export interface ProgramInput {
+  name: string;
+  phase?: number;
+  description?: string;
+  days: { dayOfWeek: number; title: string; exercises: ProgramExercise[] }[];
+}
+
+export const programApi = {
+  list: () => request<{ items: ProgramSummary[] }>(API_URL, "/api/coach/programs", { auth: true }),
+  get: (id: string) => request<ProgramDetail>(API_URL, `/api/coach/programs/${id}`, { auth: true }),
+  create: (data: ProgramInput) =>
+    request<ProgramDetail>(API_URL, "/api/coach/programs", { method: "POST", body: data, auth: true }),
+  update: (id: string, data: ProgramInput) =>
+    request<ProgramDetail>(API_URL, `/api/coach/programs/${id}`, {
+      method: "PUT",
+      body: data,
+      auth: true,
+    }),
+  remove: (id: string) =>
+    request<Record<string, unknown>>(API_URL, `/api/coach/programs/${id}`, {
+      method: "DELETE",
+      auth: true,
+    }),
+  assign: (id: string, studentId: string) =>
+    request<{ assignmentId: string; programId: string; studentId: string }>(
+      API_URL,
+      `/api/coach/programs/${id}/assign`,
+      { method: "POST", body: { studentId }, auth: true }
+    ),
+};
+
 export interface InvitationInfo {
   code: string;
   coachName: string | null;
