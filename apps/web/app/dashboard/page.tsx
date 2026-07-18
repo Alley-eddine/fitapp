@@ -25,12 +25,14 @@ import {
   stepsApi,
   weightApi,
   workoutApi,
+  studentApi,
   type CoachStudent,
   type Profile,
   type StepsToday,
   type WeightEntry,
   type Workout,
   type WeeklyStats,
+  type StudentProgramResponse,
 } from "@/lib/api";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,6 +63,7 @@ export default function DashboardPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [weekly, setWeekly] = useState<WeeklyStats | null>(null);
   const [students, setStudents] = useState<CoachStudent[]>([]);
+  const [studentProgram, setStudentProgram] = useState<StudentProgramResponse | null>(null);
 
   useEffect(() => {
     const auth = getAuth();
@@ -89,6 +92,13 @@ export default function DashboardPage() {
         if (st.status === "fulfilled") setWeekly(st.value);
       })
       .finally(() => setLoading(false));
+
+    if (auth.user.role === "student") {
+      studentApi
+        .program()
+        .then(setStudentProgram)
+        .catch(() => undefined);
+    }
 
     if (auth.user.role === "coach") {
       coachApi
@@ -294,6 +304,41 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Student: today's planned session */}
+      {user.role === "student" && (
+        <Link href="/student/program" className="mt-4 block">
+          <Card className="border-primary/30 transition hover:border-primary/60">
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Ta séance du jour</CardTitle>
+              <ChevronRight className="size-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              {!studentProgram ? (
+                <Skeleton className="h-10 w-full" />
+              ) : !studentProgram.program ? (
+                <p className="text-sm text-muted-foreground">
+                  Ton coach ne t&apos;a pas encore assigné de programme.
+                </p>
+              ) : studentProgram.today ? (
+                <>
+                  <p className="font-semibold">{studentProgram.today.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {studentProgram.today.exercises.length} exercice
+                    {studentProgram.today.exercises.length > 1 ? "s" : ""} · déjà réglé par{" "}
+                    {studentProgram.program.coach.name ?? "ton coach"}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Jour de repos
+                  {studentProgram.next ? ` · à suivre : ${studentProgram.next.title}` : ""}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       {/* Coach: students */}
       {user.role === "coach" && (
