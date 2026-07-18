@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estimateCalories, MET_BY_TYPE } from '../routes/workout.routes.js';
+import { estimateCalories, MET_BY_TYPE } from '../domain/workout-calories.js';
 
 // MET lookup table exposed for reference in assertions
 const { muscu: MET_MUSCU, cardio: MET_CARDIO, hiit: MET_HIIT } = MET_BY_TYPE as {
