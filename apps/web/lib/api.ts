@@ -163,6 +163,42 @@ export const programApi = {
     ),
 };
 
+export interface StudentCoach {
+  id: string;
+  name: string | null;
+  email: string;
+  since: string;
+}
+
+export interface StudentProgramDay {
+  id: string;
+  dayOfWeek: number;
+  title: string;
+  exercises: ProgramExercise[];
+}
+
+export interface StudentProgram {
+  id: string;
+  name: string;
+  phase: number;
+  description: string | null;
+  startDate: string;
+  coach: { id: string; name: string | null };
+  days: StudentProgramDay[];
+}
+
+export interface StudentProgramResponse {
+  program: StudentProgram | null;
+  todayDayOfWeek?: number;
+  today: StudentProgramDay | null;
+  next: StudentProgramDay | null;
+}
+
+export const studentApi = {
+  coach: () => request<{ coach: StudentCoach | null }>(API_URL, "/api/student/coach", { auth: true }),
+  program: () => request<StudentProgramResponse>(API_URL, "/api/student/program", { auth: true }),
+};
+
 export interface InvitationInfo {
   code: string;
   coachName: string | null;

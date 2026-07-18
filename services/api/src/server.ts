@@ -14,6 +14,7 @@ import { notificationHistoryRoutes } from './routes/notification-history.routes.
 import { coachRoutes } from './routes/coach.routes.js';
 import { invitationRoutes } from './routes/invitation.routes.js';
 import { programRoutes } from './routes/program.routes.js';
+import { studentRoutes } from './routes/student.routes.js';
 import { env } from './config/env.js';
 
 collectDefaultMetrics();
@@ -43,6 +44,7 @@ export const createServer = async () => {
   await fastify.register(coachRoutes, { prefix: '/api' });
   await fastify.register(invitationRoutes, { prefix: '/api' });
   await fastify.register(programRoutes, { prefix: '/api' });
+  await fastify.register(studentRoutes, { prefix: '/api' });
 
   // Prometheus metrics endpoint
   fastify.get('/metrics', async (_request, reply) => {
