@@ -1,7 +1,27 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { getAuth } from "@/lib/auth";
 
 export default function HomePage() {
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    // Already signed in? Stay in the app instead of showing the landing.
+    if (getAuth()) {
+      router.replace("/dashboard");
+      return;
+    }
+    setChecked(true);
+  }, [router]);
+
+  // Avoid flashing the landing while we redirect a logged-in user.
+  if (!checked) return null;
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-3xl">
