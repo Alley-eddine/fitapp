@@ -3,8 +3,8 @@ import {
   computeDailyCalories,
   ACTIVITY_FACTORS,
   GOAL_ADJUSTMENTS,
-  type ProfileRow,
-} from '../routes/profile.routes.js';
+  type ProfileCalorieInput,
+} from '../domain/profile-calories.js';
 
 /**
  * Age determinism strategy:
@@ -20,22 +20,15 @@ import {
  *  c) exact value assertions using birth_date = Jan 1 of (currentYear - age)
  */
 
-/** Build a ProfileRow with sensible defaults; override only what the test needs. */
-function makeRow(overrides: Partial<ProfileRow>): ProfileRow {
+/** Build the calorie inputs with sensible defaults; override only what's tested. */
+function makeRow(overrides: Partial<ProfileCalorieInput>): ProfileCalorieInput {
   return {
-    id: 'test-id',
-    user_id: 'user-1',
     current_weight: 80,
-    target_weight: null,
     height: 175,
     birth_date: new Date(`${new Date().getFullYear() - 30}-01-01`), // 30 years old
     gender: 'male',
     activity_level: 'moderate',
     goal: 'maintain',
-    daily_calorie_target: null,
-    allergies: null,
-    diet_preferences: null,
-    onboarding_completed: false,
     ...overrides,
   };
 }

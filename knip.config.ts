@@ -21,6 +21,9 @@ const config: KnipConfig = {
     'tailwindcss',
     '@tailwindcss/postcss',
     'husky',
+    // Imported from app/globals.css (@import), which knip does not scan
+    'shadcn',
+    'tw-animate-css',
   ],
   ignore: [
     '**/__tests__/**',
