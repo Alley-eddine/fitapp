@@ -14,7 +14,7 @@ const TABS = [
 ];
 
 // Routes that should NOT show the app navigation (unauthenticated surfaces).
-const HIDDEN_PREFIXES = ["/login", "/auth", "/onboarding"];
+const HIDDEN_PREFIXES = ["/login", "/auth", "/onboarding", "/join"];
 
 export function BottomNav() {
   const pathname = usePathname();
