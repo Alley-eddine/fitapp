@@ -69,8 +69,49 @@ export interface CoachStudent {
   since: string;
 }
 
+export interface CoachInvitation {
+  id: string;
+  code: string;
+  email: string | null;
+  status: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  createdAt: string;
+}
+
 export const coachApi = {
   students: () => request<{ students: CoachStudent[] }>(API_URL, "/api/coach/students", { auth: true }),
+  invitations: () =>
+    request<{ items: CoachInvitation[] }>(API_URL, "/api/coach/invitations", { auth: true }),
+  createInvitation: (email?: string) =>
+    request<CoachInvitation>(API_URL, "/api/coach/invitations", {
+      method: "POST",
+      body: email ? { email } : {},
+      auth: true,
+    }),
+  revokeInvitation: (id: string) =>
+    request<CoachInvitation>(API_URL, `/api/coach/invitations/${id}`, {
+      method: "DELETE",
+      auth: true,
+    }),
+};
+
+export interface InvitationInfo {
+  code: string;
+  coachName: string | null;
+  status: string;
+  expiresAt: string;
+  usable: boolean;
+}
+
+export const invitationApi = {
+  lookup: (code: string) => request<InvitationInfo>(API_URL, `/api/invitations/${code}`),
+  accept: (code: string) =>
+    request<{ joined: boolean; coach: { id: string; name: string | null } }>(
+      API_URL,
+      `/api/invitations/${code}/accept`,
+      { method: "POST", auth: true }
+    ),
 };
 
 export interface WorkoutExercise {
