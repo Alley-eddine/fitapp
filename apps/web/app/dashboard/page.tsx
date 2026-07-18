@@ -300,7 +300,13 @@ export default function DashboardPage() {
         <Card className="mt-4">
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Mes élèves</CardTitle>
-            <ChevronRight className="size-4 text-muted-foreground" />
+            <Link
+              href="/coach"
+              className="flex items-center gap-1 text-sm text-primary transition hover:underline"
+            >
+              Espace coach
+              <ChevronRight className="size-4" />
+            </Link>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {students.length === 0 ? (
