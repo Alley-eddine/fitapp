@@ -50,6 +50,14 @@ const QUICK_LINKS = [
   { href: "/profile", label: "Profil", icon: Flame },
 ];
 
+/** A linked student gets the coach-framed meals page instead of the free AI. */
+const quickLinksForRole = (role: AuthUser["role"]) =>
+  role === "student"
+    ? QUICK_LINKS.map((l) =>
+        l.href === "/nutrition" ? { ...l, href: "/student/nutrition", label: "Mes repas" } : l
+      )
+    : QUICK_LINKS;
+
 const weightChartConfig = {
   weight: { label: "Poids", color: "var(--chart-1)" },
 } satisfies ChartConfig;
@@ -301,7 +309,7 @@ export default function DashboardPage() {
 
       {/* Quick links */}
       <div className="grid grid-cols-5 gap-2">
-        {QUICK_LINKS.map(({ href, label, icon: Icon }) => (
+        {quickLinksForRole(user.role).map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

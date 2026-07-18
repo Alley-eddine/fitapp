@@ -34,8 +34,14 @@ export default function NutritionPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!getAuth()) {
+    const auth = getAuth();
+    if (!auth) {
       router.replace("/login");
+      return;
+    }
+    // A linked student follows the coach's frame — no free recipe AI.
+    if (auth.user.role === "student") {
+      router.replace("/student/nutrition");
       return;
     }
     nutritionApi

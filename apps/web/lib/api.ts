@@ -12,6 +12,30 @@ interface RequestOptions {
   token?: string;
 }
 
+/** Turns an API error payload (string or Zod flatten() object) into a readable message. */
+function formatApiError(error: unknown, status: number): string {
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const { formErrors, fieldErrors } = error as {
+      formErrors?: unknown;
+      fieldErrors?: Record<string, unknown>;
+    };
+    const messages: string[] = [];
+    if (Array.isArray(formErrors)) {
+      messages.push(...formErrors.filter((m): m is string => typeof m === "string"));
+    }
+    if (fieldErrors && typeof fieldErrors === "object") {
+      for (const value of Object.values(fieldErrors)) {
+        if (Array.isArray(value)) {
+          messages.push(...value.filter((m): m is string => typeof m === "string"));
+        }
+      }
+    }
+    if (messages[0]) return messages[0];
+  }
+  return `Erreur ${String(status)}`;
+}
+
 async function request<T>(base: string, path: string, opts: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, auth = false } = opts;
   const headers: Record<string, string> = {};
@@ -28,9 +52,11 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
   });
 
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ?? `Erreur ${String(res.status)}`);
+    const data = (await res.json().catch(() => ({}))) as { error?: unknown };
+    throw new Error(formatApiError(data.error, res.status));
   }
+  // DELETE endpoints answer 204 with an empty body — nothing to parse.
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 

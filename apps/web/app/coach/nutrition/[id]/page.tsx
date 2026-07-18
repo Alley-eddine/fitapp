@@ -12,6 +12,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface MealForm {
   label: string;
@@ -39,9 +48,11 @@ const emptyMeal = (label: string): MealForm => ({
   notes: "",
 });
 
-const toOptionalInt = (value: string): number | undefined => {
+/** Parses a form field into an integer ≥ min, or undefined when empty/invalid. */
+const toOptionalInt = (value: string, min = 1): number | undefined => {
+  if (!value.trim()) return undefined;
   const n = Number(value);
-  return value.trim() && Number.isFinite(n) && n > 0 ? Math.round(n) : undefined;
+  return Number.isFinite(n) && n >= min ? Math.round(n) : undefined;
 };
 
 export default function NutritionPlanBuilderPage() {
@@ -58,6 +69,8 @@ export default function NutritionPlanBuilderPage() {
   const [dailyCalories, setDailyCalories] = useState("");
   const [meals, setMeals] = useState<MealForm[]>([]);
   const [supplements, setSupplements] = useState<SupplementForm[]>([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
@@ -125,9 +138,9 @@ export default function NutritionPlanBuilderPage() {
         .map((m) => ({
           label: m.label.trim(),
           targetCalories: toOptionalInt(m.calories),
-          proteinG: toOptionalInt(m.protein),
-          carbsG: toOptionalInt(m.carbs),
-          fatG: toOptionalInt(m.fat),
+          proteinG: toOptionalInt(m.protein, 0),
+          carbsG: toOptionalInt(m.carbs, 0),
+          fatG: toOptionalInt(m.fat, 0),
           foods: m.foods
             .split(",")
             .map((f) => f.trim())
@@ -160,13 +173,15 @@ export default function NutritionPlanBuilderPage() {
   }
 
   async function handleDelete() {
-    if (!window.confirm("Supprimer ce plan nutrition ?")) return;
+    setDeleting(true);
     try {
       await nutritionPlanApi.remove(id);
       toast.success("Plan supprimé");
       router.push("/coach");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Échec de la suppression");
+      setDeleting(false);
+      setConfirmingDelete(false);
     }
   }
 
@@ -383,12 +398,41 @@ export default function NutritionPlanBuilderPage() {
               {saving ? "Enregistrement…" : isNew ? "Créer le plan" : "Enregistrer"}
             </Button>
             {!isNew && (
-              <Button variant="ghost" className="text-destructive" onClick={() => void handleDelete()}>
+              <Button
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => setConfirmingDelete(true)}
+              >
                 <Trash2 className="size-4" />
                 Supprimer
               </Button>
             )}
           </div>
+
+          <Dialog open={confirmingDelete} onOpenChange={(open) => !open && setConfirmingDelete(false)}>
+            <DialogTrigger className="hidden" aria-hidden />
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Supprimer ce plan nutrition ?</DialogTitle>
+                <DialogDescription>
+                  Les élèves qui le suivent perdront leurs repas imposés. Cette action est
+                  définitive.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
+                  Annuler
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={deleting}
+                  onClick={() => void handleDelete()}
+                >
+                  {deleting ? "Suppression…" : "Supprimer"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </main>
