@@ -3,9 +3,20 @@ import { generateRecipeSchema, frigoModeMessageSchema } from '@fitapp/shared';
 import { authMiddleware } from '../middleware/auth.js';
 import { GroqProvider } from '../providers/groq.provider.js';
 import { RateLimiterService } from '../services/rate-limiter.service.js';
+import { query } from '../config/database.js';
+import { resolveEffectiveTier, type SubscriptionTier } from '../domain/effective-tier.js';
 
 const aiProvider = new GroqProvider();
 const rateLimiter = new RateLimiterService();
+
+/** Rate limits apply to the effective tier: a linked student is premium (B2B seat). */
+const effectiveTierOf = async (userId: string, subscription: SubscriptionTier) => {
+  const res = await query(
+    `SELECT 1 FROM coach_students WHERE student_id = $1 AND status = 'active'`,
+    [userId]
+  );
+  return resolveEffectiveTier(subscription, (res.rowCount ?? 0) > 0);
+};
 
 interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -28,7 +39,8 @@ export const aiRoutes = (fastify: FastifyInstance) => {
 
       try {
         // Check rate limit
-        const rateLimit = await rateLimiter.checkLimit(user.sub, user.subscription, 'recipe');
+        const tier = await effectiveTierOf(user.sub, user.subscription);
+        const rateLimit = await rateLimiter.checkLimit(user.sub, tier, 'recipe');
         if (!rateLimit.allowed) {
           return reply.status(429).send({
             error: 'Rate limit exceeded',
@@ -72,7 +84,8 @@ export const aiRoutes = (fastify: FastifyInstance) => {
 
       try {
         // Check rate limit
-        const rateLimit = await rateLimiter.checkLimit(user.sub, user.subscription, 'frigo_mode');
+        const tier = await effectiveTierOf(user.sub, user.subscription);
+        const rateLimit = await rateLimiter.checkLimit(user.sub, tier, 'frigo_mode');
         if (!rateLimit.allowed) {
           return reply.status(429).send({
             error: 'Rate limit exceeded',
@@ -107,9 +120,10 @@ export const aiRoutes = (fastify: FastifyInstance) => {
       const user = request.user;
       if (!user) return reply.status(401).send({ error: 'Unauthorized' });
 
+      const tier = await effectiveTierOf(user.sub, user.subscription);
       const [recipeLimit, frigoLimit] = await Promise.all([
-        rateLimiter.checkLimit(user.sub, user.subscription, 'recipe'),
-        rateLimiter.checkLimit(user.sub, user.subscription, 'frigo_mode'),
+        rateLimiter.checkLimit(user.sub, tier, 'recipe'),
+        rateLimiter.checkLimit(user.sub, tier, 'frigo_mode'),
       ]);
 
       return await reply.send({
