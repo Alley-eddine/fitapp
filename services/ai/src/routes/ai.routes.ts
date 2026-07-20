@@ -3,8 +3,9 @@ import { generateRecipeSchema, frigoModeMessageSchema } from '@fitapp/shared';
 import { authMiddleware } from '../middleware/auth.js';
 import { GroqProvider } from '../providers/groq.provider.js';
 import { RateLimiterService } from '../services/rate-limiter.service.js';
+import type { SubscriptionTier } from '@fitapp/shared';
 import { query } from '../config/database.js';
-import { resolveEffectiveTier, type SubscriptionTier } from '../domain/effective-tier.js';
+import { resolveEffectiveTier } from '../domain/effective-tier.js';
 
 const aiProvider = new GroqProvider();
 const rateLimiter = new RateLimiterService();

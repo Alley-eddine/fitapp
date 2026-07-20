@@ -6,7 +6,7 @@
  * must never limit them (see BUSINESS_RULES.md, "Tarification").
  */
 
-export type SubscriptionTier = 'free' | 'pro' | 'premium';
+import type { SubscriptionTier } from '@fitapp/shared';
 
 export const resolveEffectiveTier = (
   subscription: SubscriptionTier,

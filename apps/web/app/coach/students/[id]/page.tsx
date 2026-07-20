@@ -38,6 +38,8 @@ export default function StudentProgressPage() {
     }
     setReady(true);
     if (!id) return;
+    setLoading(true);
+    setProgress(null);
 
     coachApi
       .studentProgress(id)
@@ -134,7 +136,7 @@ export default function StudentProgressPage() {
                 <Scale className="size-4 text-primary" />
                 Poids (90 jours)
               </CardTitle>
-              {delta != null && (
+              {delta != null && weightData.length >= 2 && (
                 <Badge
                   variant="secondary"
                   className={delta <= 0 ? "bg-primary/15 text-primary" : ""}
