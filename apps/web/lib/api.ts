@@ -12,6 +12,30 @@ interface RequestOptions {
   token?: string;
 }
 
+/** Turns an API error payload (string or Zod flatten() object) into a readable message. */
+function formatApiError(error: unknown, status: number): string {
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const { formErrors, fieldErrors } = error as {
+      formErrors?: unknown;
+      fieldErrors?: Record<string, unknown>;
+    };
+    const messages: string[] = [];
+    if (Array.isArray(formErrors)) {
+      messages.push(...formErrors.filter((m): m is string => typeof m === "string"));
+    }
+    if (fieldErrors && typeof fieldErrors === "object") {
+      for (const value of Object.values(fieldErrors)) {
+        if (Array.isArray(value)) {
+          messages.push(...value.filter((m): m is string => typeof m === "string"));
+        }
+      }
+    }
+    if (messages[0]) return messages[0];
+  }
+  return `Erreur ${String(status)}`;
+}
+
 async function request<T>(base: string, path: string, opts: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, auth = false } = opts;
   const headers: Record<string, string> = {};
@@ -28,9 +52,11 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
   });
 
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ?? `Erreur ${String(res.status)}`);
+    const data = (await res.json().catch(() => ({}))) as { error?: unknown };
+    throw new Error(formatApiError(data.error, res.status));
   }
+  // DELETE endpoints answer 204 with an empty body — nothing to parse.
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -163,6 +189,84 @@ export const programApi = {
     ),
 };
 
+export interface NutritionMeal {
+  id?: string;
+  label: string;
+  targetCalories?: number | null;
+  proteinG?: number | null;
+  carbsG?: number | null;
+  fatG?: number | null;
+  foods: string[];
+  notes?: string | null;
+}
+
+export interface NutritionSupplement {
+  id?: string;
+  name: string;
+  dosage?: string | null;
+  timing?: string | null;
+}
+
+export interface NutritionPlanSummary {
+  id: string;
+  name: string;
+  phase: number;
+  dailyCalories: number | null;
+  mealCount: number;
+  assignedCount: number;
+  createdAt: string;
+}
+
+export interface NutritionPlanDetail {
+  id: string;
+  name: string;
+  phase: number;
+  dailyCalories: number | null;
+  notes: string | null;
+  createdAt: string;
+  meals: NutritionMeal[];
+  supplements: NutritionSupplement[];
+}
+
+export interface NutritionPlanInput {
+  name: string;
+  phase?: number;
+  dailyCalories?: number;
+  notes?: string;
+  meals: NutritionMeal[];
+  supplements: NutritionSupplement[];
+}
+
+export const nutritionPlanApi = {
+  list: () =>
+    request<{ items: NutritionPlanSummary[] }>(API_URL, "/api/coach/nutrition-plans", { auth: true }),
+  get: (id: string) =>
+    request<NutritionPlanDetail>(API_URL, `/api/coach/nutrition-plans/${id}`, { auth: true }),
+  create: (data: NutritionPlanInput) =>
+    request<NutritionPlanDetail>(API_URL, "/api/coach/nutrition-plans", {
+      method: "POST",
+      body: data,
+      auth: true,
+    }),
+  update: (id: string, data: NutritionPlanInput) =>
+    request<NutritionPlanDetail>(API_URL, `/api/coach/nutrition-plans/${id}`, {
+      method: "PUT",
+      body: data,
+      auth: true,
+    }),
+  remove: (id: string) =>
+    request<Record<string, unknown>>(API_URL, `/api/coach/nutrition-plans/${id}`, {
+      method: "DELETE",
+      auth: true,
+    }),
+  assign: (id: string, studentId: string) =>
+    request<{ assignmentId: string; planId: string; studentId: string }>(
+      API_URL,
+      `/api/coach/nutrition-plans/${id}/assign`,
+      { method: "POST", body: { studentId }, auth: true }
+    ),
+};
+
 export interface StudentCoach {
   id: string;
   name: string | null;
@@ -194,9 +298,29 @@ export interface StudentProgramResponse {
   next: StudentProgramDay | null;
 }
 
+export interface StudentNutritionPlan {
+  id: string;
+  name: string;
+  phase: number;
+  dailyCalories: number | null;
+  notes: string | null;
+  startDate: string;
+  coach: { id: string; name: string | null };
+  meals: NutritionMeal[];
+  supplements: NutritionSupplement[];
+}
+
 export const studentApi = {
   coach: () => request<{ coach: StudentCoach | null }>(API_URL, "/api/student/coach", { auth: true }),
   program: () => request<StudentProgramResponse>(API_URL, "/api/student/program", { auth: true }),
+  nutrition: () =>
+    request<{ plan: StudentNutritionPlan | null }>(API_URL, "/api/student/nutrition", { auth: true }),
+  mealRecipe: (mealId: string, ingredients?: string[]) =>
+    request<{ recipe: GeneratedRecipe; meal: NutritionMeal }>(
+      API_URL,
+      `/api/student/nutrition/meals/${mealId}/recipe`,
+      { method: "POST", body: ingredients?.length ? { ingredients } : {}, auth: true }
+    ),
 };
 
 export interface InvitationInfo {

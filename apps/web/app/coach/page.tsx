@@ -13,14 +13,17 @@ import {
   Dumbbell,
   Users,
   Send,
+  Salad,
 } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import {
   coachApi,
   programApi,
+  nutritionPlanApi,
   type CoachStudent,
   type CoachInvitation,
   type ProgramSummary,
+  type NutritionPlanSummary,
 } from "@/lib/api";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,18 +55,28 @@ export default function CoachPage() {
   const [students, setStudents] = useState<CoachStudent[]>([]);
   const [invitations, setInvitations] = useState<CoachInvitation[]>([]);
   const [programs, setPrograms] = useState<ProgramSummary[]>([]);
+  const [nutritionPlans, setNutritionPlans] = useState<NutritionPlanSummary[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [assignTarget, setAssignTarget] = useState<ProgramSummary | null>(null);
   const [assignStudent, setAssignStudent] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [assignPlanTarget, setAssignPlanTarget] = useState<NutritionPlanSummary | null>(null);
+  const [assignPlanStudent, setAssignPlanStudent] = useState("");
+  const [assigningPlan, setAssigningPlan] = useState(false);
 
   function refresh() {
-    return Promise.allSettled([coachApi.students(), coachApi.invitations(), programApi.list()])
-      .then(([s, i, p]) => {
+    return Promise.allSettled([
+      coachApi.students(),
+      coachApi.invitations(),
+      programApi.list(),
+      nutritionPlanApi.list(),
+    ])
+      .then(([s, i, p, n]) => {
         if (s.status === "fulfilled") setStudents(s.value.students);
         if (i.status === "fulfilled") setInvitations(i.value.items);
         if (p.status === "fulfilled") setPrograms(p.value.items);
+        if (n.status === "fulfilled") setNutritionPlans(n.value.items);
       })
       .finally(() => setLoading(false));
   }
@@ -131,6 +144,22 @@ export default function CoachPage() {
       toast.error(err instanceof Error ? err.message : "Échec de l'assignation");
     } finally {
       setAssigning(false);
+    }
+  }
+
+  async function handleAssignPlan() {
+    if (!assignPlanTarget || !assignPlanStudent) return;
+    setAssigningPlan(true);
+    try {
+      await nutritionPlanApi.assign(assignPlanTarget.id, assignPlanStudent);
+      toast.success("Plan nutrition assigné 🥗");
+      setAssignPlanTarget(null);
+      setAssignPlanStudent("");
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Échec de l'assignation");
+    } finally {
+      setAssigningPlan(false);
     }
   }
 
@@ -235,7 +264,7 @@ export default function CoachPage() {
       </Card>
 
       {/* Programs */}
-      <Card>
+      <Card className="mb-4">
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-base">
             <Dumbbell className="size-4 text-primary" />
@@ -287,6 +316,61 @@ export default function CoachPage() {
         </CardContent>
       </Card>
 
+      {/* Nutrition plans */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Salad className="size-4 text-primary" />
+            Mes plans nutrition
+          </CardTitle>
+          <Link href="/coach/nutrition/new" className={buttonVariants({ size: "sm" })}>
+            <Plus className="size-4" />
+            Nouveau
+          </Link>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          {loading ? (
+            <Skeleton className="h-12 w-full" />
+          ) : nutritionPlans.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Aucun plan nutrition. Crée les repas imposés, l&apos;IA proposera des recettes dans le
+              cadre.
+            </p>
+          ) : (
+            nutritionPlans.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{p.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Phase {p.phase} · {p.mealCount} repas
+                    {p.dailyCalories ? ` · ${String(p.dailyCalories)} kcal/j` : ""} ·{" "}
+                    {p.assignedCount} élève{p.assignedCount > 1 ? "s" : ""}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <Link
+                    href={`/coach/nutrition/${p.id}`}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    Modifier
+                  </Link>
+                  <Button
+                    size="sm"
+                    disabled={students.length === 0}
+                    onClick={() => {
+                      setAssignPlanTarget(p);
+                      setAssignPlanStudent(students[0]?.id ?? "");
+                    }}
+                  >
+                    Assigner
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
       {/* Assign dialog */}
       <Dialog open={assignTarget !== null} onOpenChange={(open) => !open && setAssignTarget(null)}>
         <DialogTrigger className="hidden" aria-hidden />
@@ -315,6 +399,46 @@ export default function CoachPage() {
           <DialogFooter>
             <Button disabled={assigning || !assignStudent} onClick={() => void handleAssign()}>
               {assigning ? "Assignation…" : "Assigner"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign nutrition plan dialog */}
+      <Dialog
+        open={assignPlanTarget !== null}
+        onOpenChange={(open) => !open && setAssignPlanTarget(null)}
+      >
+        <DialogTrigger className="hidden" aria-hidden />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assigner « {assignPlanTarget?.name} »</DialogTitle>
+            <DialogDescription>
+              L&apos;élève verra ses repas imposés et pourra générer des recettes dans le cadre. Son
+              plan nutrition actif précédent est archivé.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-1.5">
+            <Label>Élève</Label>
+            <Select value={assignPlanStudent} onValueChange={(v) => setAssignPlanStudent(v ?? "")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choisir un élève" />
+              </SelectTrigger>
+              <SelectContent>
+                {students.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name ?? s.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={assigningPlan || !assignPlanStudent}
+              onClick={() => void handleAssignPlan()}
+            >
+              {assigningPlan ? "Assignation…" : "Assigner"}
             </Button>
           </DialogFooter>
         </DialogContent>
