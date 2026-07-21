@@ -71,6 +71,8 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [finishing, setFinishing] = useState(false);
+  // A student's access is paid by their coach — never show the B2C offer step.
+  const [isStudent, setIsStudent] = useState(false);
 
   const [gender, setGender] = useState<Gender | "">("");
   const [birthDate, setBirthDate] = useState("");
@@ -81,9 +83,14 @@ export default function OnboardingPage() {
   const [goal, setGoal] = useState<FitnessGoal>("maintain");
 
   useEffect(() => {
-    if (!getAuth()) {
+    const auth = getAuth();
+    if (!auth) {
       router.replace("/login");
       return;
+    }
+    if (auth.user.role === "student") {
+      setIsStudent(true);
+      return; // no B2C plans to load for a linked student
     }
     paymentApi
       .plans()
@@ -249,7 +256,39 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {step === 2 && (
+      {step === 2 && isStudent && (
+        <div className="flex flex-1 flex-col">
+          <h1 className="text-2xl font-bold">Tout est prêt</h1>
+          <p className="mt-1 mb-5 text-sm text-muted-foreground">
+            Ton accès est pris en charge par ton coach — rien à choisir ni à payer.
+          </p>
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-transparent">
+            <CardContent className="flex flex-col gap-3 py-4">
+              <p className="flex items-center gap-2 font-semibold">
+                <Crown className="size-4 text-primary" />
+                Accès élève inclus via ton coach
+              </p>
+              <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+                {["Programme et repas pré-réglés par ton coach", "Recettes IA dans le cadre, en illimité", "Suivi automatique partagé avec ton coach"].map((f) => (
+                  <li key={f} className="flex items-center gap-2">
+                    <Check className="size-3.5 shrink-0 text-primary" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Button className="mt-1 w-full" disabled={finishing} onClick={() => void finish("free")}>
+                {finishing ? "…" : "Accéder à mon espace"}
+              </Button>
+            </CardContent>
+          </Card>
+          <Button variant="ghost" className="mt-4" onClick={() => setStep(1)}>
+            <ChevronLeft className="size-4" />
+            Retour
+          </Button>
+        </div>
+      )}
+
+      {step === 2 && !isStudent && (
         <div className="flex flex-1 flex-col">
           <h1 className="text-2xl font-bold">Choisis ton offre</h1>
           <p className="mt-1 mb-5 text-sm text-muted-foreground">
