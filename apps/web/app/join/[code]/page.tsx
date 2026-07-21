@@ -5,8 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { UserPlus, CheckCircle2, XCircle } from "lucide-react";
-import { getAuth } from "@/lib/auth";
-import { invitationApi, type InvitationInfo } from "@/lib/api";
+import { getAuth, updateUser } from "@/lib/auth";
+import { invitationApi, authApi, type InvitationInfo } from "@/lib/api";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +34,16 @@ export default function JoinPage() {
     setJoining(true);
     try {
       const res = await invitationApi.accept(code);
+      // Accepting turns a lambda into a student in the database, but the cached
+      // user (and access token) still says "user". Refresh the cached role from
+      // /auth/me so the client-side guards (no B2C paywall, student views) apply
+      // right away, without waiting for a re-login.
+      try {
+        const me = await authApi.me();
+        updateUser({ role: me.role, subscriptionTier: me.subscription });
+      } catch {
+        updateUser({ role: "student" });
+      }
       toast.success(`Tu as rejoint ${res.coach.name ?? "ton coach"} 🎉`);
       router.replace("/dashboard");
     } catch (err) {
