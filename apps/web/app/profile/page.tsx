@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Flame, CreditCard, ChevronRight } from "lucide-react";
-import { getAuth } from "@/lib/auth";
+import { ArrowLeft, Flame, CreditCard, ChevronRight, UserRound } from "lucide-react";
+import { getAuth, type AuthUser } from "@/lib/auth";
 import {
   profileApi,
   type Profile,
@@ -55,6 +55,7 @@ function num(value: string): number | undefined {
 export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [role, setRole] = useState<AuthUser["role"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -68,10 +69,12 @@ export default function ProfilePage() {
   const [goal, setGoal] = useState<FitnessGoal>("maintain");
 
   useEffect(() => {
-    if (!getAuth()) {
+    const auth = getAuth();
+    if (!auth) {
       router.replace("/login");
       return;
     }
+    setRole(auth.user.role);
     profileApi
       .get()
       .then((p) => {
@@ -154,17 +157,32 @@ export default function ProfilePage() {
         </Card>
       )}
 
-      <Link href="/billing" className="mb-4 block">
-        <Card className="transition hover:border-primary/60">
-          <CardContent className="flex items-center justify-between py-4">
-            <span className="flex items-center gap-3 font-semibold">
-              <CreditCard className="size-5 text-primary" />
-              Mon abonnement
-            </span>
-            <ChevronRight className="size-4 text-primary" />
+      {role === "student" ? (
+        // B2B rule: a linked student never sees the B2C paywall.
+        <Card className="mb-4 border-primary/30 bg-primary/5">
+          <CardContent className="flex items-center gap-3 py-4">
+            <UserRound className="size-5 shrink-0 text-primary" />
+            <div>
+              <p className="font-semibold">Accès élève</p>
+              <p className="text-sm text-muted-foreground">
+                Toutes les fonctions sont incluses via ton coach — rien à payer ici.
+              </p>
+            </div>
           </CardContent>
         </Card>
-      </Link>
+      ) : (
+        <Link href="/billing" className="mb-4 block">
+          <Card className="transition hover:border-primary/60">
+            <CardContent className="flex items-center justify-between py-4">
+              <span className="flex items-center gap-3 font-semibold">
+                <CreditCard className="size-5 text-primary" />
+                Mon abonnement
+              </span>
+              <ChevronRight className="size-4 text-primary" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       <Card>
         <CardHeader>

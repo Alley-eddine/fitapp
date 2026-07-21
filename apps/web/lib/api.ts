@@ -105,8 +105,24 @@ export interface CoachInvitation {
   createdAt: string;
 }
 
+export interface StudentProgress {
+  student: { id: string; name: string | null; email: string; since: string };
+  program: { name: string; phase: number } | null;
+  adherence: { completedLast7Days: number; plannedPerWeek: number | null };
+  workouts: {
+    id: string;
+    type: string;
+    durationMinutes: number;
+    caloriesBurned: number | null;
+    loggedAt: string;
+  }[];
+  weights: { weight: number; loggedAt: string }[];
+}
+
 export const coachApi = {
   students: () => request<{ students: CoachStudent[] }>(API_URL, "/api/coach/students", { auth: true }),
+  studentProgress: (id: string) =>
+    request<StudentProgress>(API_URL, `/api/coach/students/${id}`, { auth: true }),
   invitations: () =>
     request<{ items: CoachInvitation[] }>(API_URL, "/api/coach/invitations", { auth: true }),
   createInvitation: (email?: string) =>

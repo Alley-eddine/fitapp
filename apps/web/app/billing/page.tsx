@@ -25,6 +25,7 @@ const TIER_LABEL: Record<Tier, string> = { free: "Free", pro: "Pro", premium: "P
 export default function BillingPage() {
   const router = useRouter();
   const [tier, setTier] = useState<Tier>("free");
+  const [isStudent, setIsStudent] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string>("");
@@ -33,6 +34,12 @@ export default function BillingPage() {
     const auth = getAuth();
     if (!auth) {
       router.replace("/login");
+      return;
+    }
+    // B2B rule: a linked student never sees the B2C paywall.
+    if (auth.user.role === "student") {
+      setIsStudent(true);
+      setLoading(false);
       return;
     }
     setTier(auth.user.subscriptionTier);
@@ -103,11 +110,34 @@ export default function BillingPage() {
           <h1 className="mt-1 text-2xl font-bold">Abonnement</h1>
         </div>
         <Badge variant="secondary" className="bg-primary/15 text-primary capitalize">
-          Plan {TIER_LABEL[tier]}
+          {isStudent ? "Élève" : `Plan ${TIER_LABEL[tier]}`}
         </Badge>
       </header>
 
-      {loading ? (
+      {isStudent ? (
+        <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-transparent">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="size-4 text-primary" />
+              Accès élève — inclus via ton coach
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              Ton coach prend en charge ton accès : programmes, nutrition cadrée, recettes IA et
+              suivi sont inclus tant que tu es rattaché·e. Rien à payer ici.
+            </p>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {["Programme et repas pré-réglés par ton coach", "Recettes IA dans le cadre, en illimité", "Suivi automatique partagé avec ton coach"].map((f) => (
+                <li key={f} className="flex items-center gap-2">
+                  <Check className="size-4 shrink-0 text-primary" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : loading ? (
         <div className="flex flex-col gap-4">
           <Skeleton className="h-48 w-full" />
           <Skeleton className="h-48 w-full" />

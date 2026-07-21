@@ -406,10 +406,17 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground">Aucun élève pour l&apos;instant.</p>
             ) : (
               students.map((s) => (
-                <div key={s.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                <Link
+                  key={s.id}
+                  href={`/coach/students/${s.id}`}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2 transition hover:border-primary/60 hover:bg-muted"
+                >
                   <span>{s.name ?? s.email}</span>
-                  <span className="text-sm text-muted-foreground">{s.status}</span>
-                </div>
+                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                    {s.status}
+                    <ChevronRight className="size-4 text-primary" />
+                  </span>
+                </Link>
               ))
             )}
           </CardContent>

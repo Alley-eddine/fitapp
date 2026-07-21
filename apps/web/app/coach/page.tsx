@@ -14,6 +14,7 @@ import {
   Users,
   Send,
   Salad,
+  ChevronRight,
 } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import {
@@ -249,15 +250,20 @@ export default function CoachPage() {
             </p>
           ) : (
             students.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+              <Link
+                key={s.id}
+                href={`/coach/students/${s.id}`}
+                className="flex items-center justify-between rounded-lg border px-3 py-2 transition hover:border-primary/60 hover:bg-muted"
+              >
                 <div className="min-w-0">
                   <p className="truncate font-medium">{s.name ?? s.email}</p>
                   <p className="truncate text-xs text-muted-foreground">{s.email}</p>
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                   depuis le {new Date(s.since).toLocaleDateString("fr-FR")}
+                  <ChevronRight className="size-4 text-primary" />
                 </span>
-              </div>
+              </Link>
             ))
           )}
         </CardContent>
