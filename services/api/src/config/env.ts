@@ -13,6 +13,8 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   AUTH_SERVICE_URL: z.string().url().default('http://localhost:3001'),
   AI_SERVICE_URL: z.string().url().default('http://localhost:3003'),
+  NOTIFICATIONS_SERVICE_URL: z.string().url().default('http://localhost:3004'),
+  INTERNAL_API_KEY: z.string().min(16).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

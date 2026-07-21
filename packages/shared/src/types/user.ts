@@ -1,12 +1,14 @@
 import type { SubscriptionTier } from './subscription.js';
 
 export type OAuthProvider = 'google' | 'facebook' | 'apple' | 'email';
+export type UserRole = 'coach' | 'student' | 'user';
 
 export interface User {
   id: string;
   email: string;
   name: string | null;
   avatarUrl: string | null;
+  role: UserRole;
   provider: OAuthProvider;
   subscription: SubscriptionTier;
   subscriptionEndsAt: Date | null;

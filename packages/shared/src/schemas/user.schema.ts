@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const oAuthProviderSchema = z.enum(['google', 'facebook', 'apple']);
 export const subscriptionTierSchema = z.enum(['free', 'pro', 'premium']);
+export const userRoleSchema = z.enum(['coach', 'student', 'user']);
 export const activityLevelSchema = z.enum(['sedentary', 'light', 'moderate', 'active', 'very_active']);
 export const fitnessGoalSchema = z.enum(['lose_weight', 'gain_muscle', 'maintain', 'improve_endurance']);
 export const genderSchema = z.enum(['male', 'female']);

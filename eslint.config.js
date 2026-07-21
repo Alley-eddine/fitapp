@@ -6,7 +6,16 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '**/*.d.ts', '**/*.js'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      '**/.next/**',
+      '**/.expo/**',
+      'apps/mobile/**', // legacy Expo app — excluded from the active workspace
+      '**/*.d.ts',
+      '**/*.js',
+    ],
   },
   {
     files: ['**/*.ts', '**/*.tsx'],

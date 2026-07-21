@@ -34,14 +34,23 @@ export class AuthenticateOAuthUseCase {
     let isNewUser = false;
 
     if (!user) {
-      user = await this.userRepository.create({
-        email: data.email,
-        name: data.name,
-        avatarUrl: data.avatarUrl,
-        provider: data.provider,
-        providerId: data.providerId,
-      });
-      isNewUser = true;
+      // Account linking: an account may already exist with this email (e.g.
+      // created via email/password). Reuse it instead of inserting a duplicate,
+      // which would violate the UNIQUE(email) constraint. Google emails are
+      // verified, so linking on a matching address is safe.
+      const existing = await this.userRepository.findByEmail(data.email);
+      if (existing) {
+        user = existing;
+      } else {
+        user = await this.userRepository.create({
+          email: data.email,
+          name: data.name,
+          avatarUrl: data.avatarUrl,
+          provider: data.provider,
+          providerId: data.providerId,
+        });
+        isNewUser = true;
+      }
     }
 
     const [accessToken, refreshToken] = await Promise.all([

@@ -46,15 +46,22 @@ export const stepsRoutes = (fastify: FastifyInstance) => {
         return reply.status(400).send({ error: validation.error.flatten() });
       }
 
-      const { steps, goal = 10000 } = validation.data;
+      const { steps, goal } = validation.data;
 
-      // Upsert for today
+      // Upsert today's total. The goal is a sticky setting: when not provided,
+      // keep today's goal (on update) or carry forward the most recent one
+      // (on a new day), defaulting to 10000 only if the user never set one.
       const result = await query<StepsRow>(
         `INSERT INTO steps_logs (user_id, steps, goal, logged_at)
-         VALUES ($1, $2, $3, CURRENT_DATE)
-         ON CONFLICT (user_id, logged_at) DO UPDATE SET steps = $2, goal = $3
+         VALUES (
+           $1, $2,
+           COALESCE($3, (SELECT goal FROM steps_logs WHERE user_id = $1 ORDER BY logged_at DESC LIMIT 1), 10000),
+           CURRENT_DATE
+         )
+         ON CONFLICT (user_id, logged_at)
+         DO UPDATE SET steps = $2, goal = COALESCE($3, steps_logs.goal)
          RETURNING *`,
-        [userId, steps, goal]
+        [userId, steps, goal ?? null]
       );
 
       return await reply.status(201).send(mapSteps(result.rows[0]));

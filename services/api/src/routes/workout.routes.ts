@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { createWorkoutSchema } from '@fitapp/shared';
 import { query } from '../config/database.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { sendEmail, emailHtml } from '../notifications.client.js';
+import { estimateCalories } from '../domain/workout-calories.js';
 
 interface WorkoutRow {
   id: string;
@@ -30,29 +32,6 @@ interface ExerciseRow {
 }
 
 // Rough MET values per exercise type for a calorie-burn estimate.
-const MET_BY_TYPE: Record<string, number> = { muscu: 5, cardio: 8, hiit: 10 };
-
-interface ExerciseLike {
-  exerciseType?: string;
-}
-
-/**
- * Estimates calories burned: MET x weight(kg) x duration(h). MET is the average
- * across the workout's exercise types (defaults to a moderate 6).
- */
-const estimateCalories = (
-  durationMinutes: number,
-  weightKg: number,
-  exercises: ExerciseLike[] | undefined
-): number => {
-  let met = 6;
-  if (exercises && exercises.length > 0) {
-    const mets = exercises.map((e) => MET_BY_TYPE[e.exerciseType ?? 'muscu'] ?? 6);
-    met = mets.reduce((a, b) => a + b, 0) / mets.length;
-  }
-  return Math.round(met * weightKg * (durationMinutes / 60));
-};
-
 export const workoutRoutes = (fastify: FastifyInstance) => {
   // Get user's workouts
   fastify.get(
@@ -162,6 +141,20 @@ export const workoutRoutes = (fastify: FastifyInstance) => {
             insertedExercises.push(exResult.rows[0]);
           }
         }
+      }
+
+      // Notify the user that their session was logged (best-effort).
+      if (workout && request.user?.email) {
+        const burned = workout.calories_burned ?? 0;
+        void sendEmail({
+          to: request.user.email,
+          subject: 'Séance enregistrée 💪',
+          html: emailHtml(
+            'Séance enregistrée 💪',
+            `Bravo ! Ta séance « ${workout.type} » est enregistrée (${String(workout.duration_minutes)} min, ${String(burned)} kcal).`
+          ),
+          text: `Séance « ${workout.type} » enregistrée.`,
+        });
       }
 
       return await reply.status(201).send(mapWorkout(workout, insertedExercises));
