@@ -28,6 +28,7 @@ Les services `ai` et `notifications` ne sont **jamais exposés** : ils ne sont a
 - **Aucun domaine requis** : Coolify génère des URLs `sslip.io` (bouton *Generate Domain*) pour les 3 services publics. Un domaine perso reste optionnel.
 - Coolify déjà installé sur le VPS (fait ✅).
 - Comptes **Vercel** (Pro ✅), **Resend** (Pro ✅), **Groq**, **Stripe**, **Google Cloud** (OAuth).
+- **Images pré-construites** : le VPS ne build rien. Les 5 images sont construites par GitHub Actions (`.github/workflows/build-images.yml`) et poussées sur **GHCR**. Après un merge sur `main`, attendre la fin du workflow *Build & push service images*, puis **rendre publics** les 5 packages `ghcr.io/alley-eddine/fitapp-*` (GitHub → Packages → chaque package → *Package settings* → *Change visibility* → Public) — sinon ajouter un identifiant GHCR dans Coolify (*Keys & Tokens → Registries*).
 
 ## Ordre de déploiement (les URLs se croisent)
 
@@ -46,7 +47,7 @@ Le front a besoin des URLs du back, et le back a besoin de l'URL du front. On ca
    openssl rand -hex 24   # POSTGRES_PASSWORD
    ```
 3. **URLs publiques** : dans l'UI Coolify, pour `auth` (port 3001), `api` (3002) et `payment` (3005), cliquer *Generate Domain* → Coolify crée une URL `https://<service>.<IP>.sslip.io` avec TLS. Laisser `ai`, `notifications`, `postgres`, `redis` **sans URL** (privés). Noter les 3 URLs générées.
-4. **Deploy**. Au premier boot, `postgres` exécute `scripts/init-db.sql` (schéma complet). Pour une base déjà peuplée, appliquer les migrations idempotentes de `scripts/migrations/`.
+4. **Deploy**. Coolify **télécharge** les images depuis GHCR (quelques secondes, aucun build sur le VPS). Au premier boot, `postgres` exécute `scripts/init-db.sql` (schéma complet). Pour une base déjà peuplée, appliquer les migrations idempotentes de `scripts/migrations/`.
 5. Vérifier : `https://api.<IP>.sslip.io/health` → `{"status":"healthy","service":"api"}`.
 
 > Auto-deploy : activer le **webhook GitHub** de Coolify (Settings → Webhooks) pour redéployer à chaque push sur `main`.
