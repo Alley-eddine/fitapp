@@ -12,6 +12,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ExerciseLibraryDialog } from "@/components/exercise-library-dialog";
 import {
   Select,
@@ -57,6 +66,8 @@ export default function ProgramBuilderPage() {
   const [name, setName] = useState("");
   const [phase, setPhase] = useState("1");
   const [days, setDays] = useState<DayRow[]>([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
@@ -178,13 +189,15 @@ export default function ProgramBuilderPage() {
   }
 
   async function handleDelete() {
-    if (!window.confirm("Supprimer ce programme ?")) return;
+    setDeleting(true);
     try {
       await programApi.remove(id);
       toast.success("Programme supprimé");
       router.push("/coach");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Échec de la suppression");
+      setDeleting(false);
+      setConfirmingDelete(false);
     }
   }
 
@@ -309,12 +322,41 @@ export default function ProgramBuilderPage() {
               {saving ? "Enregistrement…" : isNew ? "Créer le programme" : "Enregistrer"}
             </Button>
             {!isNew && (
-              <Button variant="ghost" className="text-destructive" onClick={() => void handleDelete()}>
+              <Button
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => setConfirmingDelete(true)}
+              >
                 <Trash2 className="size-4" />
                 Supprimer
               </Button>
             )}
           </div>
+
+          <Dialog open={confirmingDelete} onOpenChange={(open) => !open && setConfirmingDelete(false)}>
+            <DialogTrigger className="hidden" aria-hidden />
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Supprimer ce programme ?</DialogTitle>
+                <DialogDescription>
+                  Les élèves qui le suivent perdront leurs séances prévues. Cette action est
+                  définitive.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
+                  Annuler
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={deleting}
+                  onClick={() => void handleDelete()}
+                >
+                  {deleting ? "Suppression…" : "Supprimer"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </main>
