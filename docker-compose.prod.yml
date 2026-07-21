@@ -1,0 +1,169 @@
+# Production stack for Coolify (self-hosted on the Hetzner VPS).
+#
+# Public services (a domain is assigned in the Coolify UI, Traefik + Let's Encrypt
+# handle TLS):   auth · api · payment
+# Internal only (private Coolify network, never published):   ai · notifications · postgres · redis
+#
+# The Next.js front is NOT here — it is deployed on Vercel and calls the public
+# services over HTTPS. See DEPLOYMENT_PROD.md.
+#
+# Every value below comes from Coolify's environment variables (Secrets), so no
+# secret is committed. See .env.production.example for the full list.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fitapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-fitapp}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Runs only on an empty data dir — seeds the schema on first boot.
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fitapp} -d ${POSTGRES_DB:-fitapp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      NOTIFICATIONS_SERVICE_URL: http://notifications:3004
+      FRONTEND_URL: ${FRONTEND_URL}
+      AUTH_PUBLIC_URL: ${AUTH_PUBLIC_URL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      AUTH_SERVICE_URL: http://auth:3001
+      AI_SERVICE_URL: http://ai:3003
+      NOTIFICATIONS_SERVICE_URL: http://notifications:3004
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  ai:
+    build:
+      context: .
+      dockerfile: services/ai/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      FREE_TIER_DAILY_LIMIT: ${FREE_TIER_DAILY_LIMIT:-5}
+      PRO_TIER_DAILY_LIMIT: ${PRO_TIER_DAILY_LIMIT:-50}
+      PREMIUM_TIER_DAILY_LIMIT: ${PREMIUM_TIER_DAILY_LIMIT:-200}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3003/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  notifications:
+    build:
+      context: .
+      dockerfile: services/notifications/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3004/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  payment:
+    build:
+      context: .
+      dockerfile: services/payment/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      NOTIFICATIONS_SERVICE_URL: http://notifications:3004
+      FRONTEND_URL: ${FRONTEND_URL}
+      PAYMENT_PUBLIC_URL: ${PAYMENT_PUBLIC_URL}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_PRICE_PRO: ${STRIPE_PRICE_PRO}
+      STRIPE_PRICE_PREMIUM: ${STRIPE_PRICE_PREMIUM}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3005/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
