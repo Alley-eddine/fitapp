@@ -7,6 +7,11 @@
 # The Next.js front is NOT here — it is deployed on Vercel and calls the public
 # services over HTTPS. See DEPLOYMENT_PROD.md.
 #
+# Images are built by GitHub Actions (.github/workflows/build-images.yml) and
+# pulled from GHCR, so the VPS never builds — it only starts containers. Make the
+# five ghcr.io/alley-eddine/fitapp-* packages public, or add a GHCR credential in
+# Coolify, so the pull succeeds.
+#
 # Every value below comes from Coolify's environment variables (Secrets), so no
 # secret is committed. See .env.production.example for the full list.
 
@@ -41,9 +46,7 @@ services:
       retries: 5
 
   auth:
-    build:
-      context: .
-      dockerfile: services/auth/Dockerfile
+    image: ghcr.io/alley-eddine/fitapp-auth:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -68,9 +71,7 @@ services:
       retries: 3
 
   api:
-    build:
-      context: .
-      dockerfile: services/api/Dockerfile
+    image: ghcr.io/alley-eddine/fitapp-api:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -91,9 +92,7 @@ services:
       retries: 3
 
   ai:
-    build:
-      context: .
-      dockerfile: services/ai/Dockerfile
+    image: ghcr.io/alley-eddine/fitapp-ai:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -114,9 +113,7 @@ services:
       retries: 3
 
   notifications:
-    build:
-      context: .
-      dockerfile: services/notifications/Dockerfile
+    image: ghcr.io/alley-eddine/fitapp-notifications:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -138,9 +135,7 @@ services:
       retries: 3
 
   payment:
-    build:
-      context: .
-      dockerfile: services/payment/Dockerfile
+    image: ghcr.io/alley-eddine/fitapp-payment:latest
     restart: unless-stopped
     depends_on:
       postgres:
