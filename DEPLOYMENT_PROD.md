@@ -8,25 +8,33 @@ Cible : **front sur Vercel**, **back (5 microservices + PostgreSQL + Redis) sur 
         ┌───────────┴───────────┐
         │                       │
    Vercel (front)         Coolify / Hetzner (Traefik + TLS)
-   https://<DOMAIN>        ├─ auth     → https://auth.<DOMAIN>   (public)
-        │                  ├─ api      → https://api.<DOMAIN>    (public)
-        │                  ├─ payment  → https://pay.<DOMAIN>    (public)
-        └── appels HTTPS ──┤─ ai            (réseau privé)
-                           ├─ notifications (réseau privé)
-                           ├─ postgres      (réseau privé, volume)
-                           └─ redis         (réseau privé, volume)
+   https://<app>.vercel.app     ├─ auth     → https://auth.<IP>.sslip.io  (public)
+        │                       ├─ api      → https://api.<IP>.sslip.io   (public)
+        │                       ├─ payment  → https://pay.<IP>.sslip.io   (public)
+        └── appels HTTPS ───────┤─ ai            (réseau privé)
+                                ├─ notifications (réseau privé)
+                                ├─ postgres      (réseau privé, volume)
+                                └─ redis         (réseau privé, volume)
 ```
 
-Les services `ai` et `notifications` ne sont **jamais exposés** : ils ne sont appelés qu'en interne (api → ai, auth/payment → notifications) sur le réseau privé Coolify. Seuls `auth`, `api`, `payment` reçoivent un domaine public.
+Les services `ai` et `notifications` ne sont **jamais exposés** : ils ne sont appelés qu'en interne (api → ai, auth/payment → notifications) sur le réseau privé Coolify. Seuls `auth`, `api`, `payment` reçoivent une URL publique.
+
+> **Sans domaine perso.** Le front tourne sur l'URL fournie par Vercel (`<app>.vercel.app`). Pour le back, Coolify génère des URLs **`sslip.io`** à partir de l'IP du VPS (`<service>.<IP>.sslip.io`) avec TLS Let's Encrypt automatique — aucun domaine à acheter ni DNS à gérer. Un domaine perso reste ajoutable plus tard sans changer le code (juste les variables d'env).
 
 ---
 
 ## 1. Prérequis (côté Alley, une fois)
 
-- Un **domaine** pointant vers le VPS. Créer 3 enregistrements DNS `A` vers l'IP du VPS :
-  `auth.<DOMAIN>`, `api.<DOMAIN>`, `pay.<DOMAIN>` (Coolify génère les certificats Let's Encrypt).
+- **Aucun domaine requis** : Coolify génère des URLs `sslip.io` (bouton *Generate Domain*) pour les 3 services publics. Un domaine perso reste optionnel.
 - Coolify déjà installé sur le VPS (fait ✅).
 - Comptes **Vercel** (Pro ✅), **Resend** (Pro ✅), **Groq**, **Stripe**, **Google Cloud** (OAuth).
+
+## Ordre de déploiement (les URLs se croisent)
+
+Le front a besoin des URLs du back, et le back a besoin de l'URL du front. On casse la dépendance en 3 temps :
+1. **Back d'abord** (§2) → récupérer les 3 URLs `sslip.io` (auth, api, pay).
+2. **Front** (§3) avec ces 3 URLs → récupérer l'URL `*.vercel.app`.
+3. **Back, mise à jour** : renseigner `FRONTEND_URL`, `AUTH_PUBLIC_URL`, `PAYMENT_PUBLIC_URL`, `GOOGLE_CALLBACK_URL` avec les vraies URLs → redéployer, puis §4 (callbacks Google/Stripe).
 
 ## 2. Back — Coolify
 
@@ -37,38 +45,36 @@ Les services `ai` et `notifications` ne sont **jamais exposés** : ils ne sont a
    openssl rand -hex 16   # INTERNAL_API_KEY
    openssl rand -hex 24   # POSTGRES_PASSWORD
    ```
-3. **Domaines** : dans l'UI Coolify, assigner un domaine aux 3 services publics
-   (`auth.<DOMAIN>` → service `auth` port 3001, `api.<DOMAIN>` → `api` 3002, `pay.<DOMAIN>` → `payment` 3005).
-   Laisser `ai`, `notifications`, `postgres`, `redis` **sans domaine**.
+3. **URLs publiques** : dans l'UI Coolify, pour `auth` (port 3001), `api` (3002) et `payment` (3005), cliquer *Generate Domain* → Coolify crée une URL `https://<service>.<IP>.sslip.io` avec TLS. Laisser `ai`, `notifications`, `postgres`, `redis` **sans URL** (privés). Noter les 3 URLs générées.
 4. **Deploy**. Au premier boot, `postgres` exécute `scripts/init-db.sql` (schéma complet). Pour une base déjà peuplée, appliquer les migrations idempotentes de `scripts/migrations/`.
-5. Vérifier : `https://api.<DOMAIN>/health` → `{"status":"healthy","service":"api"}`.
+5. Vérifier : `https://api.<IP>.sslip.io/health` → `{"status":"healthy","service":"api"}`.
 
 > Auto-deploy : activer le **webhook GitHub** de Coolify (Settings → Webhooks) pour redéployer à chaque push sur `main`.
 
 ## 3. Front — Vercel
 
 1. **New Project** → importer le dépôt. **Root Directory** = `apps/web`. Framework = Next.js (auto).
-2. **Environment Variables** :
+2. **Environment Variables** (les 3 URLs `sslip.io` notées au §2) :
    ```
-   NEXT_PUBLIC_AUTH_URL=https://auth.<DOMAIN>
-   NEXT_PUBLIC_API_URL=https://api.<DOMAIN>
-   NEXT_PUBLIC_PAYMENT_URL=https://pay.<DOMAIN>
+   NEXT_PUBLIC_AUTH_URL=https://auth.<IP>.sslip.io
+   NEXT_PUBLIC_API_URL=https://api.<IP>.sslip.io
+   NEXT_PUBLIC_PAYMENT_URL=https://pay.<IP>.sslip.io
    ```
-3. **Deploy**. Vercel redéploie automatiquement à chaque push sur `main` (prod) et crée une preview par PR.
-4. (Option) Domaine custom `<DOMAIN>` sur le projet Vercel, et mettre `FRONTEND_URL=https://<DOMAIN>` côté Coolify.
+3. **Deploy** → noter l'URL de prod `https://<app>.vercel.app`. Vercel redéploie à chaque push sur `main` (prod) et crée une preview par PR.
+4. **Retour Coolify** : renseigner côté back `FRONTEND_URL=https://<app>.vercel.app`, `AUTH_PUBLIC_URL=https://auth.<IP>.sslip.io`, `PAYMENT_PUBLIC_URL=https://pay.<IP>.sslip.io`, `GOOGLE_CALLBACK_URL=https://auth.<IP>.sslip.io/auth/google/callback` → redéployer.
 
 ## 4. Callbacks externes à mettre à jour
 
-- **Google OAuth** (console) : URI de redirection autorisée = `https://auth.<DOMAIN>/auth/google/callback`.
-- **Stripe** (dashboard) : endpoint webhook = `https://pay.<DOMAIN>/api/payment/webhook`, puis copier le `whsec_…` dans `STRIPE_WEBHOOK_SECRET`.
-- **Resend** : vérifier le domaine d'envoi pour `EMAIL_FROM` (livraison à n'importe quel destinataire avec Resend Pro).
+- **Google OAuth** (console) : URI de redirection autorisée = `https://auth.<IP>.sslip.io/auth/google/callback`.
+- **Stripe** (dashboard) : endpoint webhook = `https://pay.<IP>.sslip.io/api/payment/webhook`, puis copier le `whsec_…` dans `STRIPE_WEBHOOK_SECRET`.
+- **Resend** : vérifier un domaine d'envoi pour `EMAIL_FROM` (livraison à n'importe quel destinataire avec Resend Pro). Sans domaine vérifié, garder l'adresse `onboarding@resend.dev` de test.
 
 ## 5. Vérification post-déploiement
 
 ```bash
-curl https://auth.<DOMAIN>/health
-curl https://api.<DOMAIN>/health
-curl https://pay.<DOMAIN>/health
+curl https://auth.<IP>.sslip.io/health
+curl https://api.<IP>.sslip.io/health
+curl https://pay.<IP>.sslip.io/health
 ```
 Puis le parcours réel : inscription → (rôle coach en base) → invitation → un 2e compte rejoint → programme + plan nutrition assignés → séance du jour + recette IA cadrée → progression côté coach → pas de paywall pour l'élève.
 
