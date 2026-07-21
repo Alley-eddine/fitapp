@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [auth, api, ai, notifications, payment]
+        service: [auth, api, ai, notifications, payment, postgres]
     steps:
       - uses: actions/checkout@v4
 

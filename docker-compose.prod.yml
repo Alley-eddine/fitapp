@@ -17,7 +17,9 @@
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # Schema baked into the image (see services/postgres/Dockerfile) instead of
+    # a host bind mount, which Coolify does not provide at runtime.
+    image: ghcr.io/alley-eddine/fitapp-postgres:latest
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-fitapp}
@@ -25,13 +27,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-fitapp}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Runs only on an empty data dir — seeds the schema on first boot.
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fitapp} -d ${POSTGRES_DB:-fitapp}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 40s
 
   redis:
     image: redis:7-alpine
