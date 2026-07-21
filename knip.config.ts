@@ -3,10 +3,9 @@ import type { KnipConfig } from 'knip';
 const config: KnipConfig = {
   workspaces: {
     '.': {},
-    'apps/mobile': {
-      entry: ['app/**/*.tsx', 'src/**/*.ts'],
-      project: ['app/**/*.tsx', 'src/**/*.ts'],
-      ignore: ['babel.config.js', 'metro.config.js'],
+    'apps/web': {
+      entry: ['app/**/*.{ts,tsx}', 'next.config.ts', 'postcss.config.mjs'],
+      project: ['app/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}', 'components/**/*.{ts,tsx}'],
     },
     'services/*': {
       project: ['src/**/*.ts'],
@@ -17,18 +16,14 @@ const config: KnipConfig = {
     },
   },
   ignoreDependencies: [
+    // react-dom & tailwind are used by Next/PostCSS, not imported directly
     'react-dom',
-    '@babel/core',
-    'expo-auth-session',
-    'expo-crypto',
-    'react-native-svg',
-    'react-native-web',
-    'expo-updates',
-    'expo-system-ui',
+    'tailwindcss',
+    '@tailwindcss/postcss',
     'husky',
-    // Expo web runtime — pulled in by Expo's web build, not imported in our code
-    'metro-runtime',
-    '@expo/metro-runtime',
+    // Imported from app/globals.css (@import), which knip does not scan
+    'shadcn',
+    'tw-animate-css',
   ],
   ignore: [
     '**/__tests__/**',

@@ -85,8 +85,8 @@ export const paymentRoutes = (fastify: FastifyInstance) => {
           client_reference_id: dbUser.id,
           line_items: [{ price: plan.priceId, quantity: 1 }],
           subscription_data: { metadata: { userId: dbUser.id } },
-          success_url: `${env.PAYMENT_PUBLIC_URL}/api/payment/return?status=success`,
-          cancel_url: `${env.PAYMENT_PUBLIC_URL}/api/payment/return?status=cancel`,
+          success_url: `${env.FRONTEND_URL}/billing?status=success`,
+          cancel_url: `${env.FRONTEND_URL}/billing?status=cancel`,
         });
 
         return await reply.send({ url: session.url, sessionId: session.id });

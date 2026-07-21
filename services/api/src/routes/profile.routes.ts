@@ -2,8 +2,10 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { updateProfileSchema } from '@fitapp/shared';
 import { query } from '../config/database.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { sendEmail, emailHtml } from '../notifications.client.js';
+import { computeDailyCalories } from '../domain/profile-calories.js';
 
-interface ProfileRow {
+export interface ProfileRow {
   id: string;
   user_id: string;
   current_weight: number | null;
@@ -18,45 +20,6 @@ interface ProfileRow {
   diet_preferences: string[] | null;
   onboarding_completed: boolean;
 }
-
-const ACTIVITY_FACTORS: Record<string, number> = {
-  sedentary: 1.2,
-  light: 1.375,
-  moderate: 1.55,
-  active: 1.725,
-  very_active: 1.9,
-};
-
-const GOAL_ADJUSTMENTS: Record<string, number> = {
-  lose_weight: -500,
-  gain_muscle: 300,
-  maintain: 0,
-  improve_endurance: 200,
-};
-
-/**
- * Daily calorie target via Mifflin-St Jeor BMR x activity factor + goal
- * adjustment. Returns null when the required inputs are missing.
- */
-const computeDailyCalories = (row: ProfileRow): number | null => {
-  if (row.current_weight == null || row.height == null || !row.birth_date || !row.gender) {
-    return null;
-  }
-  const birth = new Date(row.birth_date);
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const m = now.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-  if (age <= 0 || age > 120) return null;
-
-  const weight = Number(row.current_weight);
-  const height = Number(row.height);
-  const bmr =
-    10 * weight + 6.25 * height - 5 * age + (row.gender === 'male' ? 5 : -161);
-  const tdee = bmr * (ACTIVITY_FACTORS[row.activity_level] ?? 1.55);
-  const target = tdee + (GOAL_ADJUSTMENTS[row.goal] ?? 0);
-  return Math.round(target);
-};
 
 export const profileRoutes = (fastify: FastifyInstance) => {
   // Get current user's profile
@@ -146,6 +109,19 @@ export const profileRoutes = (fastify: FastifyInstance) => {
           );
           profile = updated.rows[0] ?? profile;
         }
+      }
+
+      // Welcome email when the user just completed onboarding (best-effort).
+      if (data.onboardingCompleted === true && request.user?.email) {
+        void sendEmail({
+          to: request.user.email,
+          subject: 'Bienvenue sur FitCoach AI 💪',
+          html: emailHtml(
+            'Bienvenue sur FitCoach AI 💪',
+            'Ton compte est prêt. Crée ta première séance, suis ton poids et tes calories, et laisse le coach IA t’aider côté nutrition.'
+          ),
+          text: 'Bienvenue sur FitCoach AI ! Ton compte est prêt.',
+        });
       }
 
       return await reply.send(mapProfile(profile));

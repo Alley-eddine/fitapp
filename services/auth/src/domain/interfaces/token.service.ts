@@ -4,6 +4,7 @@ export interface TokenPayload {
   sub: string;
   email: string;
   subscription: UserEntity['subscription'];
+  role: UserEntity['role'];
 }
 
 export interface ITokenService {
