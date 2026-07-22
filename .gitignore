@@ -16,8 +16,8 @@ build/
 *.swp
 *.swo
 
-# Claude Code — versionner la gouvernance (.claude/), ignorer le local perso
-.claude/settings.local.json
+# Local tooling workspace (not versioned)
+.claude/
 
 # OS
 .DS_Store
