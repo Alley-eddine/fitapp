@@ -11,7 +11,10 @@
 | **Projet** | FitCoach AI — plateforme de coaching sportif (coach / élève / autonome) |
 | **Épreuve** | Bloc 2 — rendu écrit : code source + dossier |
 | **Front en production** | https://fitapp-ai-ten.vercel.app (Vercel) |
-| **Back en production** | 5 microservices Fastify sur VPS Hetzner, orchestrés par Coolify |
+| **Back en production** | 5 microservices Fastify sur VPS Hetzner (IP `188.245.65.113`), orchestrés par Coolify |
+| **Service `auth`** | https://yc4cw0cowcsw0ws4gcoskosc.188.245.65.113.sslip.io (vérifiable via `/health`) |
+| **Service `api`** | https://g8ks4w0o80g04o4kggo8csoo.188.245.65.113.sslip.io (vérifiable via `/health`) |
+| **Service `payment`** | https://t88cs0gswco8s80ggo44kc8c.188.245.65.113.sslip.io (vérifiable via `/api/payment/plans`) |
 | **Version du dossier** | 1.0 — 22 juillet 2026 |
 
 ---
@@ -56,7 +59,7 @@ FitCoach AI sert aujourd'hui trois parcours réels, avec des comptes de démonst
 | **Coach** | `coach` | Crée des programmes d'entraînement versionnés par phase, des plans nutrition (repas par kcal/macros + compléments), invite des élèves, suit leur adhérence | Desktop |
 | **Élève** | `student` | Reçoit un programme et un plan nutrition déjà réglés, exécute sans configurer, voit ses recettes IA contraintes par le cadre du coach | PWA mobile |
 
-Le front (Next.js 15, App Router, PWA) est déployé sur Vercel à l'URL **https://fitapp-ai-ten.vercel.app**. Il consomme trois services backend exposés publiquement — `auth`, `api`, `payment` — via des URLs `https://<service>.<IP-VPS>.sslip.io` générées par Coolify avec certificat TLS Let's Encrypt automatique (le détail du schéma de déploiement fait l'objet du chapitre 8). Deux services, `ai` et `notifications`, ne sont volontairement **jamais exposés** publiquement : ils ne répondent que sur le réseau privé Coolify, appelés uniquement par les autres services via l'en-tête `x-internal-key`.
+Le front (Next.js 15, App Router, PWA) est déployé sur Vercel à l'URL **https://fitapp-ai-ten.vercel.app**. Il consomme trois services backend exposés publiquement — `auth`, `api`, `payment` — via des URLs `sslip.io` générées par Coolify sur l'IP du VPS (`188.245.65.113`), avec certificat TLS Let's Encrypt automatique (URLs récapitulées en tête de dossier) (le détail du schéma de déploiement fait l'objet du chapitre 8). Deux services, `ai` et `notifications`, ne sont volontairement **jamais exposés** publiquement : ils ne répondent que sur le réseau privé Coolify, appelés uniquement par les autres services via l'en-tête `x-internal-key`.
 
 Ce chapitre pose le décor ; les chapitres suivants détaillent, compétence par compétence, comment cet état de production a été obtenu et est maintenu.
 
@@ -521,7 +524,7 @@ Un tag `v1.0.0` marque la première version jugée stable de la plateforme, coh�
 
 ### 9.1 Méthode
 
-Le cahier de recettes ci-dessous est exécuté manuellement sur l'environnement de production (front https://fitapp-ai-ten.vercel.app, back sur les URLs `sslip.io` documentées dans `DEPLOYMENT_PROD.md`), à l'aide des deux comptes de démonstration (`markus.demo@fitcoach.local` côté coach, `emma.demo@fitcoach.local` côté élève, déjà rattachée). Chaque scénario porte un identifiant (TC-*), le résultat attendu, le résultat constaté et un statut. Les statuts **KO** ne sont pas des échecs cachés : ils alimentent directement le plan de correction des bugs (chapitre 10), avec renvoi vers le numéro d'issue GitHub correspondant.
+Le cahier de recettes ci-dessous est exécuté manuellement sur l'environnement de production (front https://fitapp-ai-ten.vercel.app, back sur les URLs `sslip.io` récapitulées en tête de dossier), à l'aide des deux comptes de démonstration (`markus.demo@fitcoach.local` côté coach, `emma.demo@fitcoach.local` côté élève, déjà rattachée). Chaque scénario porte un identifiant (TC-*), le résultat attendu, le résultat constaté et un statut. Les statuts **KO** ne sont pas des échecs cachés : ils alimentent directement le plan de correction des bugs (chapitre 10), avec renvoi vers le numéro d'issue GitHub correspondant.
 
 ### 9.2 Scénarios — parcours autonome
 
