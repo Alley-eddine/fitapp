@@ -172,28 +172,48 @@ export default function StudentProgramPage() {
             </CardContent>
           </Card>
 
-          {/* Week */}
+          {/* Week — every session is startable; the student spaces them freely */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Ma semaine</CardTitle>
+              <CardTitle className="text-base">Mes séances</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Fais-les quand tu veux — l&apos;important, c&apos;est de bien les espacer.
+              </p>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              {program.days.map((d) => (
-                <div
-                  key={d.id}
-                  className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
-                    d.dayOfWeek === data?.todayDayOfWeek ? "border-primary/60" : ""
-                  }`}
-                >
-                  <div>
-                    <p className="text-sm font-medium">{DAY_LABELS[d.dayOfWeek]}</p>
-                    <p className="text-xs text-muted-foreground">{d.title}</p>
+              {program.days.map((d) => {
+                const isToday = d.dayOfWeek === data?.todayDayOfWeek;
+                return (
+                  <div
+                    key={d.id}
+                    className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+                      isToday ? "border-primary/60" : ""
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {d.title}
+                        {isToday && <span className="ml-2 text-xs text-primary">aujourd&apos;hui</span>}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {DAY_LABELS[d.dayOfWeek]} · {d.exercises.length} exo
+                        {d.exercises.length > 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={isToday ? "default" : "outline"}
+                      disabled={d.exercises.length === 0}
+                      onClick={() =>
+                        setSession({ title: d.title, exercises: toSessionExercises(d) })
+                      }
+                    >
+                      <Play className="size-4" />
+                      Démarrer
+                    </Button>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {d.exercises.length} exo{d.exercises.length > 1 ? "s" : ""}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         </>
