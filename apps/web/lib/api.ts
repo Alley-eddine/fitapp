@@ -571,6 +571,115 @@ export const nutritionApi = {
     }),
 };
 
+/** A recipe persisted via POST /api/recipes (nullable fields come from the DB). */
+export interface SavedRecipe {
+  id: string;
+  userId: string;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  ingredients: RecipeIngredient[];
+  instructions: string[];
+  prepTimeMinutes: number | null;
+  cookTimeMinutes: number | null;
+  servings: number | null;
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  tags: string[];
+  isFromFrigoMode: boolean;
+  createdAt: string;
+}
+
+export interface SaveRecipePayload {
+  title: string;
+  description?: string;
+  ingredients: RecipeIngredient[];
+  instructions: string[];
+  prepTimeMinutes?: number;
+  cookTimeMinutes?: number;
+  servings?: number;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  tags?: string[];
+  isFromFrigoMode?: boolean;
+}
+
+// saveRecipeSchema wants strictly positive ints for these — omit anything else.
+const posInt = (n: number): number | undefined => {
+  const v = Math.round(n);
+  return Number.isFinite(v) && v > 0 ? v : undefined;
+};
+
+const nonNegInt = (n: number): number | undefined => {
+  const v = Math.round(n);
+  return Number.isFinite(v) && v >= 0 ? v : undefined;
+};
+
+/** Maps an AI-generated recipe to the payload accepted by saveRecipeSchema. */
+export function toSaveRecipePayload(recipe: GeneratedRecipe, isFromFrigoMode: boolean): SaveRecipePayload {
+  const description = recipe.description.trim().slice(0, 2000);
+  return {
+    title: recipe.title.trim().slice(0, 255),
+    description: description || undefined,
+    ingredients: recipe.ingredients
+      .filter((ing) => ing.name.trim().length > 0)
+      .slice(0, 50)
+      .map((ing) => ({
+        name: ing.name.trim().slice(0, 255),
+        quantity: ing.quantity.slice(0, 50),
+        unit: ing.unit.slice(0, 50),
+      })),
+    instructions: recipe.instructions
+      .filter((step) => step.trim().length > 0)
+      .slice(0, 50)
+      .map((step) => step.slice(0, 1000)),
+    prepTimeMinutes: posInt(recipe.prepTimeMinutes),
+    cookTimeMinutes: posInt(recipe.cookTimeMinutes),
+    servings: posInt(recipe.servings),
+    calories: posInt(recipe.calories),
+    protein: nonNegInt(recipe.protein),
+    carbs: nonNegInt(recipe.carbs),
+    fat: nonNegInt(recipe.fat),
+    tags: recipe.tags.filter((t) => t.trim().length > 0).slice(0, 20).map((t) => t.slice(0, 50)),
+    isFromFrigoMode,
+  };
+}
+
+/** Normalizes a saved recipe (nullable fields) into the shape RecipeCard renders. */
+export function savedToGenerated(recipe: SavedRecipe): GeneratedRecipe {
+  return {
+    title: recipe.title,
+    description: recipe.description ?? "",
+    ingredients: recipe.ingredients,
+    instructions: recipe.instructions,
+    prepTimeMinutes: recipe.prepTimeMinutes ?? 0,
+    cookTimeMinutes: recipe.cookTimeMinutes ?? 0,
+    servings: recipe.servings ?? 0,
+    calories: recipe.calories ?? 0,
+    protein: recipe.protein ?? 0,
+    carbs: recipe.carbs ?? 0,
+    fat: recipe.fat ?? 0,
+    tags: recipe.tags,
+  };
+}
+
+export const recipeApi = {
+  save: (payload: SaveRecipePayload) =>
+    request<SavedRecipe>(API_URL, "/api/recipes", { method: "POST", body: payload, auth: true }),
+  list: (offset = 0, limit = 20) =>
+    request<{ items: SavedRecipe[]; total: number }>(
+      API_URL,
+      `/api/recipes?limit=${String(limit)}&offset=${String(offset)}`,
+      { auth: true }
+    ),
+  remove: (id: string) =>
+    request<void>(API_URL, `/api/recipes/${id}`, { method: "DELETE", auth: true }),
+};
+
 export interface Plan {
   tier: "pro" | "premium";
   name: string;
