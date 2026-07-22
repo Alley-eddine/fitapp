@@ -100,7 +100,7 @@ Un package `@fitapp/db` (dans `packages/`) expose des fonctions typées génér�
 Cette décision est cohérente avec :
 
 1. Les **principes microservices** tels que définis par Martin Fowler et Sam Newman (*Building Microservices*) : chaque service doit être déployable indépendamment et posséder ses données.
-2. La **justification de la stack** documentée dans `.claude/STACK.md` : « SQL direct (pg) sans ORM — maîtrise des requêtes, transparence, perf ».
+2. La **justification de la stack** retenue dès le choix des technologies : « SQL direct (pg) sans ORM — maîtrise des requêtes, transparence, perf ».
 3. Les **contraintes RNCP** (C1.5) : la compétence en conception et requêtage de bases de données relationnelles doit être directement démontrée dans le code.
 4. La **taille réelle du projet** : 5 services, 1 base de données, équipe d'un développeur — l'over-engineering d'un service BDD dédié n'est pas justifiable par les besoins actuels.
 
@@ -156,7 +156,5 @@ Ce n'est pas un oubli ou un manque de connaissance du cahier des charges : c'est
 
 - Sam Newman, *Building Microservices*, 2e éd., O'Reilly Media, 2021 — ch. 4 « Decomposing the Database ».
 - Martin Fowler, *Microservices* (martinfowler.com, 2014) — principe « Decentralized Data Management ».
-- `.claude/STACK.md` — justification « SQL direct (pg) sans ORM : maîtrise des requêtes, transparence, perf ».
-- `.claude/ARCHITECTURE.md` — structure des services et convention `db/pool.ts`.
 - `scripts/migrations/` — migrations idempotentes versionnées.
 - RNCP 39583, bloc C1, compétence C1.5 — conception et requêtage de bases de données.

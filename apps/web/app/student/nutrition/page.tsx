@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Salad, Sparkles, UserRound, Pill } from "lucide-react";
+import { ArrowLeft, Bookmark, Salad, Sparkles, UserRound, Pill } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import { studentApi, type StudentNutritionPlan, type GeneratedRecipe } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -52,15 +52,24 @@ export default function StudentNutritionPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-8">
-      <header className="mb-6">
+      <header className="mb-6 flex items-end justify-between">
+        <div>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
+          >
+            <ArrowLeft className="size-4" />
+            Tableau de bord
+          </Link>
+          <h1 className="mt-1 text-2xl font-bold">Mes repas</h1>
+        </div>
         <Link
-          href="/dashboard"
+          href="/recipes"
           className="flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
         >
-          <ArrowLeft className="size-4" />
-          Tableau de bord
+          <Bookmark className="size-4" />
+          Mes recettes
         </Link>
-        <h1 className="mt-1 text-2xl font-bold">Mes repas</h1>
       </header>
 
       {loading ? (
@@ -156,7 +165,7 @@ export default function StudentNutritionPage() {
                         <p className="text-xs text-muted-foreground">
                           L&apos;IA varie les plats mais reste dans le cadre fixé par ton coach.
                         </p>
-                        {recipe && <RecipeCard recipe={recipe} />}
+                        {recipe && <RecipeCard recipe={recipe} saveSource="coach-plan" />}
                       </>
                     )}
                   </CardContent>

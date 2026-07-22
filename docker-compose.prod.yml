@@ -49,6 +49,9 @@ services:
   auth:
     image: ghcr.io/alley-eddine/fitapp-auth:latest
     restart: unless-stopped
+    # Declared so Coolify's Traefik knows which port to route the domain to.
+    expose:
+      - "3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,6 +77,8 @@ services:
   api:
     image: ghcr.io/alley-eddine/fitapp-api:latest
     restart: unless-stopped
+    expose:
+      - "3002"
     depends_on:
       postgres:
         condition: service_healthy
@@ -138,6 +143,8 @@ services:
   payment:
     image: ghcr.io/alley-eddine/fitapp-payment:latest
     restart: unless-stopped
+    expose:
+      - "3005"
     depends_on:
       postgres:
         condition: service_healthy

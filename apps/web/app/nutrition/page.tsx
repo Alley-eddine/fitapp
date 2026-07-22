@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Bookmark, Send, Sparkles } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import { nutritionApi, type ChatMessage, type GeneratedRecipe } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -103,11 +103,20 @@ export default function NutritionPage() {
             Frigo Mode
           </h1>
         </div>
-        {remaining !== null && (
-          <Badge variant="secondary" className="bg-primary/15 text-primary">
-            {remaining} restante{remaining > 1 ? "s" : ""}
-          </Badge>
-        )}
+        <div className="flex flex-col items-end gap-1.5">
+          <Link
+            href="/recipes"
+            className="flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
+          >
+            <Bookmark className="size-4" />
+            Mes recettes
+          </Link>
+          {remaining !== null && (
+            <Badge variant="secondary" className="bg-primary/15 text-primary">
+              {remaining} restante{remaining > 1 ? "s" : ""}
+            </Badge>
+          )}
+        </div>
       </header>
 
       <div className="flex flex-1 flex-col gap-3 pb-4">
@@ -121,7 +130,7 @@ export default function NutritionPage() {
               }
             >
               <p className="whitespace-pre-wrap">{m.content}</p>
-              {m.recipe && <RecipeCard recipe={m.recipe} />}
+              {m.recipe && <RecipeCard recipe={m.recipe} saveSource="frigo" />}
               {m.suggestions && m.suggestions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {m.suggestions.map((s) => (
