@@ -45,3 +45,6 @@ next-env.d.ts
 knip.config.js
 knip.config.d.ts
 knip.config.*.map
+
+# Crash dumps
+*.stackdump
