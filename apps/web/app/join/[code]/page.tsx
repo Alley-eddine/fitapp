@@ -117,7 +117,10 @@ export default function JoinPage() {
                   <p className="text-sm text-muted-foreground">
                     Connecte-toi ou crée ton compte pour accepter l&apos;invitation.
                   </p>
-                  <Link href="/login" className={buttonVariants({ className: "w-full" })}>
+                  <Link
+                    href={`/login?redirect=${encodeURIComponent(`/join/${code}`)}`}
+                    className={buttonVariants({ className: "w-full" })}
+                  >
                     Se connecter / s&apos;inscrire
                   </Link>
                 </>

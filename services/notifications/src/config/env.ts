@@ -9,6 +9,7 @@ dotenv.config({ path: resolve(__dirname, '../../.env') });
 const envSchema = z.object({
   PORT: z.coerce.number().default(3004),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  FRONTEND_URL: z.string().url().default('http://localhost:8081'),
   DATABASE_URL: z.string().url(),
 
   // Shared secret for service-to-service calls (auth, payment, ...).
