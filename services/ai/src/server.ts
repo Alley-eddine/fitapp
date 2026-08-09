@@ -12,9 +12,9 @@ export const createServer = async () => {
     logger: env.NODE_ENV !== 'test',
   });
 
-  // CORS - allow all origins for development
+  // CORS — any origin in development, locked to the front origin in production
   await fastify.register(cors, {
-    origin: true,
+    origin: env.NODE_ENV === 'production' ? env.FRONTEND_URL : true,
     credentials: true,
   });
 

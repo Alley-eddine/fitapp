@@ -86,6 +86,7 @@ services:
       NODE_ENV: production
       PORT: 3002
       DATABASE_URL: ${DATABASE_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
       JWT_SECRET: ${JWT_SECRET}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       AUTH_SERVICE_URL: http://auth:3001
