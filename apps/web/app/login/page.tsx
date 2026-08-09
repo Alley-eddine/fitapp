@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 import { setAuth } from "@/lib/auth";
@@ -18,8 +18,15 @@ import {
 
 type Mode = "login" | "register";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Internal paths only — never follow an absolute or protocol-relative target.
+  const rawRedirect = searchParams.get("redirect");
+  const redirect =
+    rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+      ? rawRedirect
+      : null;
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +44,7 @@ export default function LoginPage() {
           : await authApi.register({ email, password, name, phone: phone || undefined });
       setAuth({ token: res.accessToken, user: res.user });
       toast.success(mode === "login" ? "Connecté !" : "Compte créé !");
-      router.push(mode === "register" ? "/onboarding" : "/dashboard");
+      router.push(redirect ?? (mode === "register" ? "/onboarding" : "/dashboard"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
@@ -131,5 +138,14 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+// useSearchParams needs a Suspense boundary for the static prerender of this page.
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
