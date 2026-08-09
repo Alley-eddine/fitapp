@@ -1,0 +1,34 @@
+groups:
+  - name: fitapp-services
+    rules:
+      # A scrape target stopped answering — the service is most likely down.
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} injoignable"
+          description: "La cible {{ $labels.instance }} ne répond plus au scrape Prometheus depuis 2 minutes."
+
+      # Threshold chosen after the production OOM incident on the 4 GB VPS:
+      # a Node service that drifts past 400 MB RSS deserves a look well before
+      # it takes the host down.
+      - alert: HighProcessMemory
+        expr: process_resident_memory_bytes > 400 * 1024 * 1024
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mémoire élevée sur {{ $labels.job }}"
+          description: "Le processus dépasse 400 Mo de RSS depuis 10 minutes — à investiguer avant saturation de l'hôte."
+
+      # Sustained event-loop lag means the service no longer keeps up with load.
+      - alert: EventLoopLagHigh
+        expr: nodejs_eventloop_lag_seconds > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Event loop saturée sur {{ $labels.job }}"
+          description: "Latence de boucle d'événements supérieure à 500 ms depuis 5 minutes."
