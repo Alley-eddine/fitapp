@@ -88,6 +88,10 @@ export default function OnboardingPage() {
       router.replace("/login");
       return;
     }
+    if (auth.user.role === "coach") {
+      router.replace("/coach");
+      return; // a coach manages students — the B2C onboarding never applies
+    }
     if (auth.user.role === "student") {
       setIsStudent(true);
       return; // no B2C plans to load for a linked student
