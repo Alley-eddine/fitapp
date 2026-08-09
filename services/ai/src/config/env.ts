@@ -9,6 +9,7 @@ dotenv.config({ path: resolve(__dirname, '../../.env') });
 const envSchema = z.object({
   PORT: z.coerce.number().default(3003),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  FRONTEND_URL: z.string().url().default('http://localhost:8081'),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
   GROQ_API_KEY: z.string().min(1),
