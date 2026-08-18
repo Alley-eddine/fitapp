@@ -16,6 +16,14 @@ updates:
           - "patch"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # The Expo mobile app is the frozen pre-pivot prototype, kept for
+      # reference only: its dependencies are deliberately not tracked.
+      # The legacy Expo push channel follows the same rule until the
+      # web-push migration (#8) retires it.
+      - dependency-name: "expo*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react-native*"
 
   # Keep the CI actions themselves up to date
   - package-ecosystem: "github-actions"
