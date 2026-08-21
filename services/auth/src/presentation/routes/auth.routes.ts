@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { OAuth2Namespace } from '@fastify/oauth2';
-import { createHash, randomBytes, randomInt } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { fetchGoogleUserInfo } from '../../infrastructure/oauth/google.provider.js';
 import {
   sendVerificationEmail,
@@ -13,10 +13,8 @@ import { RefreshTokenUseCase } from '../../application/use-cases/refresh-token.u
 import { GetCurrentUserUseCase } from '../../application/use-cases/get-current-user.usecase.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { env } from '../../infrastructure/config/env.js';
+import { hashPassword, verifyPassword } from '../../domain/password.js';
 
-const hashPassword = (password: string): string => {
-  return createHash('sha256').update(password + env.JWT_SECRET).digest('hex');
-};
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -120,7 +118,7 @@ export const authRoutes = (fastify: FastifyInstance) => {
         return await reply.status(400).send({ error: 'Email already registered' });
       }
 
-      const passwordHash = hashPassword(password);
+      const passwordHash = await hashPassword(password);
       const user = await userRepository.createWithPassword({
         email,
         name: name || email.split('@')[0] || 'User',
@@ -264,7 +262,7 @@ export const authRoutes = (fastify: FastifyInstance) => {
         return await reply.status(400).send({ error: 'Invalid or expired code' });
       }
 
-      await userRepository.updatePassword(user.id, hashPassword(newPassword));
+      await userRepository.updatePassword(user.id, await hashPassword(newPassword));
       await userRepository.markResetCodeUsed(codeId);
 
       return await reply.send({ message: 'Mot de passe réinitialisé avec succès.' });
@@ -288,9 +286,19 @@ export const authRoutes = (fastify: FastifyInstance) => {
         return await reply.status(401).send({ error: 'Invalid email or password' });
       }
 
-      const passwordHash = hashPassword(password);
-      if (user.passwordHash !== passwordHash) {
+      const check = await verifyPassword(password, user.passwordHash, env.JWT_SECRET);
+      if (!check.valid) {
         return await reply.status(401).send({ error: 'Invalid email or password' });
+      }
+
+      if (check.needsRehash) {
+        // Transparent migration of pre-bcrypt hashes; a rehash failure must
+        // never block a valid login.
+        try {
+          await userRepository.updatePassword(user.id, await hashPassword(password));
+        } catch (rehashErr) {
+          console.error('Password rehash failed:', rehashErr);
+        }
       }
 
       const tokens = await tokenService.generateTokens(user);
