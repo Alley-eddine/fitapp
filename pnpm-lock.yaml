@@ -192,8 +192,8 @@ importers:
         specifier: ^10.0.2
         version: 10.1.0
       '@fastify/oauth2':
-        specifier: ^8.2.1
-        version: 8.2.1
+        specifier: ^8.3.0
+        version: 8.3.0
       '@fitapp/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -851,8 +851,8 @@ packages:
   '@fastify/merge-json-schemas@0.2.1':
     resolution: {integrity: sha512-OA3KGBCy6KtIvLf8DINC5880o5iBlDX4SxzLQS8HorJAbqluzLRn80UXU0bxZn7UOFhFgpRJDasfwn9nG4FG4A==}
 
-  '@fastify/oauth2@8.2.1':
-    resolution: {integrity: sha512-YXB0a3/ERDDCKFT4yTUFzxdjeII6DdDnPzdW4RhWLytGPFcDBntlH93z+RVi9KoZSHwkdrUNk2Ewi5e5PGl1gw==}
+  '@fastify/oauth2@8.3.0':
+    resolution: {integrity: sha512-ZVjoOkBeWRBYPRIL3XiWzd30DqYMkRaoyxBxIUE0ciICtXpFLX0YpM4JiUwauF3vObqsqntF2b8GDXJ9/Gpr5A==}
 
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
@@ -4467,7 +4467,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  '@fastify/oauth2@8.2.1':
+  '@fastify/oauth2@8.3.0':
     dependencies:
       '@fastify/cookie': 11.1.2
       fastify-plugin: 6.0.0
