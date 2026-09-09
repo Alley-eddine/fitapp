@@ -76,6 +76,7 @@ export class GroqProvider implements IAIProvider {
       ],
       temperature: 0.7,
       max_tokens: 2500,
+      response_format: { type: 'json_object' },
     });
 
     const text = completion.choices[0]?.message?.content ?? '';
@@ -113,6 +114,7 @@ export class GroqProvider implements IAIProvider {
       messages,
       temperature: 0.8,
       max_tokens: 2500,
+      response_format: { type: 'json_object' },
     });
 
     const text = completion.choices[0]?.message?.content ?? '';
@@ -233,12 +235,18 @@ ${conversationLength >= 4 ? `IMPORTANT pour la recette:
   }
 
   private parseRecipeResponse(text: string): GeneratedRecipe {
-    console.log('Groq raw response:', text.substring(0, 500));
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error('No JSON found in response');
     }
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+    // A model that answers with an empty or off-schema object would otherwise
+    // yield a card full of default values (no ingredients, no steps).
+    const hasIngredients = Array.isArray(parsed.ingredients) && parsed.ingredients.length > 0;
+    const hasInstructions = Array.isArray(parsed.instructions) && parsed.instructions.length > 0;
+    if (!hasIngredients || !hasInstructions) {
+      throw new Error('Recipe response is missing ingredients or instructions');
+    }
     return this.normalizeRecipe(parsed);
   }
 
