@@ -59,7 +59,7 @@ const RECIPE_JSON_SCHEMA = `{
 
 export class GroqProvider implements IAIProvider {
   private client: Groq;
-  private model = 'llama-3.3-70b-versatile';
+  private model = env.GROQ_MODEL;
 
   constructor() {
     this.client = new Groq({ apiKey: env.GROQ_API_KEY });
