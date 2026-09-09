@@ -13,6 +13,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
   GROQ_API_KEY: z.string().min(1),
+  // Groq retires models regularly — keep the name overridable without a rebuild.
+  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
 
   // Rate limiting config
   FREE_TIER_DAILY_LIMIT: z.coerce.number().default(5),
